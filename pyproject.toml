@@ -1,3 +1,124 @@
+[tool.poetry]
+name = "tonsdk_ng"
+version = "0.1.0"
+description = "Python SDK for TON"
+authors = ["tonfactory.org"]
+license = "Apache-2.0"
+keywords = ["TON", "TON SDK", "TON utils", "TON tools"]
+readme = "README.md"
+homepage = "https://github.com/gtors/tonsdk_ng"
+classifiers = [
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Adaptive Technologies",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+pynacl = { version = ">=1.4.0" }
+bitarray = { version = "==2.6.0" }
+httpx = { version = "*", optional = true }
+
+[tool.poetry.extras]
+http_api = ["httpx"]
+full = ["httpx"]
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+commitizen = "*"
+furo = "*"
+isort = "*"
+mypy = "*"
+pre-commit = "*"
+pytest = "*"
+pytest-cov = "*"
+ruff = "*"
+
+
 [build-system]
-build-backend = "setuptools.build_meta"
-requires = ["setuptools", "wheel"]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "$version"
+
+[tool.black]
+target-version = ["py310", "py311"]
+line-length = 80
+
+[tool.ruff]
+line-length = 80
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".hypothesis",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+target-version = "py310"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    # "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    # "I",
+]
+ignore = [
+    # star imports
+    "F405", "F403",
+    # lambda expression assignment
+    "E731",
+    # Loop control variable not used within loop body
+    "B007",
+]
+
+[tool.mypy]
+python_version = "3.10"
+
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.isort]
+profile = "black"
+py_version=310
+line_length = 80

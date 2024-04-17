@@ -1,6 +1,6 @@
-from tonsdk.contract.token.nft import NFTItem
-from tonsdk.utils import to_nano, bytes_to_b64str, Address
-from tonsdk.contract.wallet import Wallets, WalletVersionEnum
+from tonsdk_ng.contract.token.nft import NFTItem
+from tonsdk_ng.utils import to_nano, bytes_to_b64str, Address
+from tonsdk_ng.contract.wallet import Wallets, WalletVersionEnum
 
 
 """your wallet mnemonics"""

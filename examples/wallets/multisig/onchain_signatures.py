@@ -1,6 +1,6 @@
-from tonsdk.contract.wallet import MultiSigWallet, MultiSigOrder, MultiSigOrderBuilder
-from tonsdk.crypto import mnemonic_new, mnemonic_to_wallet_key, verify_sign
-from tonsdk.utils import Address, bytes_to_b64str, b64str_to_bytes, to_nano, sign_message
+from tonsdk_ng.contract.wallet import MultiSigWallet, MultiSigOrder, MultiSigOrderBuilder
+from tonsdk_ng.crypto import mnemonic_new, mnemonic_to_wallet_key, verify_sign
+from tonsdk_ng.utils import Address, bytes_to_b64str, b64str_to_bytes, to_nano, sign_message
 
 
 """import or generate mnemonics"""

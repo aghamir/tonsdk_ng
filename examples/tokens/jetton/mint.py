@@ -1,7 +1,7 @@
-from tonsdk.contract.token.ft import JettonMinter, JettonWallet
-from tonsdk.contract import Address
-from tonsdk.utils import to_nano, bytes_to_b64str
-from tonsdk.contract.wallet import Wallets, WalletVersionEnum
+from tonsdk_ng.contract.token.ft import JettonMinter, JettonWallet
+from tonsdk_ng.contract import Address
+from tonsdk_ng.utils import to_nano, bytes_to_b64str
+from tonsdk_ng.contract.wallet import Wallets, WalletVersionEnum
 
 
 def create_jetton_minter():
