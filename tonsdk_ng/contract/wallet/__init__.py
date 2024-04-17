@@ -1,7 +1,13 @@
 from enum import Enum
 from typing import List, Optional, Tuple
 
-from ...crypto import mnemonic_is_valid, mnemonic_new, mnemonic_to_wallet_key
+from ...crypto import (
+    mnemonic_is_valid,
+    mnemonic_new,
+    mnemonic_to_wallet_key,
+    private_key_to_public_key,
+    verify_sign,
+)
 from ...crypto.exceptions import InvalidMnemonicsError
 from ._highload_wallet_contract import HighloadWalletV2Contract
 from ._multisig_wallet_contract import (
@@ -26,7 +32,7 @@ class WalletVersionEnum(str, Enum):
 
 
 class Wallets:
-    default_version = WalletVersionEnum.v3r2
+    default_version = WalletVersionEnum.v4r2
     ALL = {
         WalletVersionEnum.v2r1: WalletV2ContractR1,
         WalletVersionEnum.v2r2: WalletV2ContractR2,
@@ -44,7 +50,7 @@ class Wallets:
         workchain: int,
         password: Optional[str] = None,
         **kwargs,
-    ) -> Tuple[List[str], bytes, bytes, WalletContract]:
+    ) -> tuple[list[str], bytes, bytes, WalletContract]:
         """
         :rtype: (List[str](mnemonics), bytes(public_key), bytes(private_key), WalletContract(wallet))
         """
@@ -63,7 +69,7 @@ class Wallets:
         version: WalletVersionEnum = default_version,
         workchain: int = 0,
         **kwargs,
-    ) -> Tuple[List[str], bytes, bytes, WalletContract]:
+    ) -> WalletContract:
         """
         :rtype: (List[str](mnemonics), bytes(public_key), bytes(private_key), WalletContract(wallet))
         """
@@ -71,11 +77,25 @@ class Wallets:
             raise InvalidMnemonicsError()
 
         pub_k, priv_k = mnemonic_to_wallet_key(mnemonics)
-        wallet = cls.ALL[version](
+        return cls.ALL[version](
             public_key=pub_k, private_key=priv_k, wc=workchain, **kwargs
         )
 
-        return mnemonics, pub_k, priv_k, wallet
+    @classmethod
+    def from_private_key(
+        cls,
+        private_key: bytes,
+        version: WalletVersionEnum = default_version,
+        workchain: int = 0,
+        **kwargs,
+    ) -> WalletContract:
+        public_key = private_key_to_public_key(private_key)
+        return cls.ALL[version](
+            public_key=public_key,
+            private_key=private_key,
+            wc=workchain,
+            **kwargs,
+        )
 
     @classmethod
     def to_addr_pk(
