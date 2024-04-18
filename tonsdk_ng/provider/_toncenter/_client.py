@@ -1,91 +1,139 @@
-import codecs
-import json
-
-
-class ToncenterWrongResult(Exception):
-    def __init__(self, code):
-        self.code = code
+import httpx
 
 
 class ToncenterClient:
-    def __init__(self, base_url: str, api_key: str | None):
-        self.base_url = base_url
-        self.api_key = api_key
-
-    def raw_send_message(self, serialized_boc):
-        serialized_boc = codecs.decode(
-            codecs.encode(serialized_boc, "base64"), "utf-8"
-        ).replace("\n", "")
-
-        return {
-            "func": self.__post_request,
-            "args": [self.base_url + "sendBoc"],
-            "kwargs": {"data": {"boc": serialized_boc}},
-        }
-
-    def raw_run_method(self, address, method, stack_data, output_layout=None):
-        return {
-            "func": self.__post_request,
-            "args": [self.base_url + "runGetMethod"],
-            "kwargs": {
-                "data": {
-                    "address": address,
-                    "method": method,
-                    "stack": stack_data,
-                }
-            },
-        }
-
-    def raw_get_account_state(self, prepared_address: str):
-        return {
-            "func": self.__jsonrpc_request,
-            "args": ["getAddressInformation"],
-            "kwargs": {"params": {"address": prepared_address}},
-        }
-
-    async def __post_request(self, session, url, data):
-        async with session.post(
-            url, data=json.dumps(data), headers=self.__headers()
-        ) as resp:
-            return await self.__parse_response(resp)
-
-    async def __jsonrpc_request(
+    def __init__(
         self,
-        session,
-        method: str,
-        params: dict,
-        id: str = "1",
-        jsonrpc: str = "2.0",
+        base_url="https://testnet.toncenter.com/api/v2",
+        api_key: str | None = None,
     ):
-        payload = {
-            "id": id,
-            "jsonrpc": jsonrpc,
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["X-API-Key"] = api_key
+        self.client = httpx.Client(base_url=base_url, headers=headers)
+
+    def send(self, method, params):
+        params = {k: v for k, v in params.items() if v is not None}
+        request_data = {
+            "id": 1,
+            "jsonrpc": "2.0",
             "method": method,
             "params": params,
         }
+        response = self.client.post("/jsonRPC", json=request_data)
+        response_json = response.json()
+        if "result" in response_json:
+            return response_json["result"]
+        else:
+            raise Exception(response_json["error"])
 
-        async with session.post(
-            self.base_url + "jsonRPC", json=payload, headers=self.__headers()
-        ) as resp:
-            return await self.__parse_response(resp)
+    def get_address_info(self, address):
+        return self.send("getAddressInformation", {"address": address})
 
-    def __headers(self):
-        headers = {
-            "Content-Type": "application/json",
-            "accept": "application/json",
-        }
-        if self.api_key:
-            headers["X-API-Key"] = self.api_key
+    def get_address_state(self, address):
+        return self.send("getAddressState", {"address": address})
 
-        return headers
+    def get_extended_address_info(self, address):
+        return self.send("getExtendedAddressInformation", {"address": address})
 
-    async def __parse_response(self, resp):
-        try:
-            resp = await resp.json()
-        except ValueError as err:
-            raise ToncenterWrongResult(resp.status) from err
+    def get_wallet_info(self, address):
+        return self.send("getWalletInformation", {"address": address})
 
-        if not resp["ok"]:
-            raise ToncenterWrongResult(resp["code"])
+    def get_transactions(
+        self, address, limit=20, lt=None, hash=None, to_lt=None, archival=None
+    ):
+        return self.send(
+            "getTransactions",
+            {
+                "address": address,
+                "limit": limit,
+                "lt": lt,
+                "hash": hash,
+                "to_lt": to_lt,
+                "archival": archival,
+            },
+        )
 
-        return resp["result"]
+    def get_balance(self, address):
+        return self.send("getAddressBalance", {"address": address})
+
+    def send_boc(self, base64):
+        return self.send("sendBoc", {"boc": base64})
+
+    def send_query(self, query):
+        return self.send("sendQuerySimple", query)
+
+    def get_estimate_fee(self, query):
+        return self.send("estimateFee", query)
+
+    def call(self, address, method, params=[]):
+        return self.send(
+            "runGetMethod",
+            {"address": address, "method": method, "stack": params},
+        )
+
+    def get_config_param(self, config_param_id):
+        raw_result = self.send("getConfigParam", {"config_id": config_param_id})
+        if raw_result["@type"] != "configInfo":
+            raise Exception("getConfigParam expected type configInfo")
+        if "config" not in raw_result:
+            raise Exception("getConfigParam expected config")
+        if raw_result["config"]["@type"] != "tvm.cell":
+            raise Exception("getConfigParam expected type tvm.cell")
+        if "bytes" not in raw_result["config"]:
+            raise Exception("getConfigParam expected bytes")
+        return Cell.one_from_boc(base64_to_bytes(raw_result["config"]["bytes"]))
+
+    def get_masterchain_info(self):
+        return self.send("getMasterchainInfo", {})
+
+    def get_block_shards(self, masterchain_block_number):
+        return self.send("shards", {"seqno": masterchain_block_number})
+
+    def get_block_transactions(
+        self,
+        workchain,
+        shard_id,
+        shard_block_number,
+        limit,
+        after_lt,
+        address_hash,
+    ):
+        return self.send(
+            "getBlockTransactions",
+            {
+                "workchain": workchain,
+                "shard": shard_id,
+                "seqno": shard_block_number,
+                "count": limit,
+                "after_lt": after_lt,
+                "after_hash": address_hash,
+            },
+        )
+
+    def get_masterchain_block_transactions(
+        self, masterchain_block_number, limit, after_lt, address_hash
+    ):
+        return self.get_block_transactions(
+            -1,
+            "-9223372036854775808",
+            masterchain_block_number,
+            limit,
+            after_lt,
+            address_hash,
+        )
+
+    def get_block_header(self, workchain, shard_id, shard_block_number):
+        return self.send(
+            "getBlockHeader",
+            {
+                "workchain": workchain,
+                "shard": shard_id,
+                "seqno": shard_block_number,
+            },
+        )
+
+    def get_masterchain_block_header(self, masterchain_block_number):
+        return self.get_block_header(
+            -1, "-9223372036854775808", masterchain_block_number
+        )

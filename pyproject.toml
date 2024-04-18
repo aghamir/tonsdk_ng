@@ -27,11 +27,11 @@ classifiers = [
 python = ">=3.10"
 pynacl = { version = ">=1.4.0" }
 bitarray = { version = "==2.6.0" }
-httpx = { version = "*", optional = true }
+httpj = { version = "*", optional = true }
 
 [tool.poetry.extras]
-http_api = ["httpx"]
-full = ["httpx"]
+http_api = ["httpj"]
+full = ["httpj"]
 
 [tool.poetry.group.dev.dependencies]
 black = "*"
