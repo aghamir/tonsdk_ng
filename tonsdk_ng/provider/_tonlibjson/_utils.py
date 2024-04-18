@@ -97,7 +97,9 @@ def hash_to_hex(b64_or_hex_hash):
 
 def pubkey_b64_to_hex(b64_key):
     """
-    Convert tonlib's pubkey in format f'I{"H"*16}' i.e. prefix:key to upperhex filename as it stored in keystore
+    Convert tonlib's pubkey in format f'I{"H"*16}' i.e. prefix:key to
+    upperhex filename as it stored in keystore
+
     :param b64_key: base64 encoded 36 bytes of public key
     :return:
     """

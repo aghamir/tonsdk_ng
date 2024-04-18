@@ -134,7 +134,7 @@ class SyncTonlibClient:
         return result["id"]
 
     def __execute(self, query) -> str:
-        extra_id = "%s:%s" % (time.time(), random.random())
+        extra_id = f"{time.time()}:{random.random()}"
         query["@extra"] = extra_id
 
         self.tonlib_wrapper.send(query)

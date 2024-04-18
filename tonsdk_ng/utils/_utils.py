@@ -30,11 +30,13 @@ def move_to_end(index_hashmap, topological_order_arr, target):
 def tree_walk(cell, topological_order_arr, index_hashmap, parent_hash=None):
     cell_hash = cell.bytes_hash()
     if cell_hash in index_hashmap:
-        if parent_hash:
-            if index_hashmap[parent_hash] > index_hashmap[cell_hash]:
-                topological_order_arr, index_hashmap = move_to_end(
-                    index_hashmap, topological_order_arr, cell_hash
-                )
+        if (
+            parent_hash
+            and index_hashmap[parent_hash] > index_hashmap[cell_hash]
+        ):
+            topological_order_arr, index_hashmap = move_to_end(
+                index_hashmap, topological_order_arr, cell_hash
+            )
         return [topological_order_arr, index_hashmap]
 
     index_hashmap[cell_hash] = len(topological_order_arr)

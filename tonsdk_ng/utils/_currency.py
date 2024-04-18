@@ -1,6 +1,6 @@
 import decimal
 from enum import Enum
-from typing import Any, Union
+from typing import Any
 
 
 class TonCurrencyEnum(str, Enum):
@@ -28,7 +28,7 @@ def is_string(value: Any) -> bool:
     return isinstance(value, string_types)
 
 
-def to_nano(number: Union[int, float, str, decimal.Decimal], unit: str) -> int:
+def to_nano(number: int | float | str | decimal.Decimal, unit: str) -> int:
     """from coins to nanocoins
 
     Args:
@@ -40,7 +40,7 @@ def to_nano(number: Union[int, float, str, decimal.Decimal], unit: str) -> int:
     """
     if unit.lower() not in units:
         raise ValueError(
-            "Unknown unit.  Must be one of {0}".format("/".join(units.keys()))
+            "Unknown unit.  Must be one of {}".format("/".join(units.keys()))
         )
 
     if is_integer(number) or is_string(number):
@@ -81,7 +81,7 @@ def to_nano(number: Union[int, float, str, decimal.Decimal], unit: str) -> int:
     return int(result_value)
 
 
-def from_nano(number: int, unit: str) -> Union[int, decimal.Decimal]:
+def from_nano(number: int, unit: str) -> int | decimal.Decimal:
     """from nanocoins to coins
 
     Args:
@@ -97,7 +97,7 @@ def from_nano(number: int, unit: str) -> Union[int, decimal.Decimal]:
     """
     if unit.lower() not in units:
         raise ValueError(
-            "Unknown unit.  Must be one of {0}".format("/".join(units.keys()))
+            "Unknown unit.  Must be one of {}".format("/".join(units.keys()))
         )
 
     if number == 0:

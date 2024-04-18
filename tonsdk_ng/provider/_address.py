@@ -13,7 +13,7 @@ def is_int(x):
     try:
         int(x)
         return True
-    except:
+    except (ValueError, TypeError):
         return False
 
 
@@ -21,7 +21,7 @@ def is_hex(x):
     try:
         int(x, 16)
         return True
-    except:
+    except (ValueError, TypeError):
         return False
 
 

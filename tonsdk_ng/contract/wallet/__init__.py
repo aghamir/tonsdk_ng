@@ -1,12 +1,10 @@
 from enum import Enum
-from typing import List, Optional, Tuple
 
 from ...crypto import (
     mnemonic_is_valid,
     mnemonic_new,
     mnemonic_to_wallet_key,
     private_key_to_public_key,
-    verify_sign,
 )
 from ...crypto.exceptions import InvalidMnemonicsError
 from ._highload_wallet_contract import HighloadWalletV2Contract
@@ -48,12 +46,9 @@ class Wallets:
         cls,
         version: WalletVersionEnum,
         workchain: int,
-        password: Optional[str] = None,
+        password: str | None = None,
         **kwargs,
     ) -> tuple[list[str], bytes, bytes, WalletContract]:
-        """
-        :rtype: (List[str](mnemonics), bytes(public_key), bytes(private_key), WalletContract(wallet))
-        """
         mnemonics = mnemonic_new(password=password)
         pub_k, priv_k = mnemonic_to_wallet_key(mnemonics)
         wallet = cls.ALL[version](
@@ -65,14 +60,11 @@ class Wallets:
     @classmethod
     def from_mnemonics(
         cls,
-        mnemonics: List[str],
+        mnemonics: list[str],
         version: WalletVersionEnum = default_version,
         workchain: int = 0,
         **kwargs,
     ) -> WalletContract:
-        """
-        :rtype: (List[str](mnemonics), bytes(public_key), bytes(private_key), WalletContract(wallet))
-        """
         if not mnemonic_is_valid(mnemonics):
             raise InvalidMnemonicsError()
 
@@ -104,10 +96,7 @@ class Wallets:
         version: WalletVersionEnum = default_version,
         workchain: int = 0,
         **kwargs,
-    ) -> Tuple[bytes, bytes]:
-        """
-        :rtype: (bytes(addr), bytes(pk)
-        """
+    ) -> tuple[bytes, bytes]:
         _mnemonics, _pub_k, priv_k, wallet = cls.from_mnemonics(
             mnemonics, version, workchain, **kwargs
         )

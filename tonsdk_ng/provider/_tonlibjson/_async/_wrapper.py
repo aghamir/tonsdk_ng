@@ -103,11 +103,7 @@ class AsyncTonLibJsonWrapper:
     def execute(self, query, timeout=10):
         query.get("@type", "?")
 
-        extra_id = "%s:%s:%s" % (
-            time.time() + timeout,
-            self.ls_index,
-            random.random(),
-        )
+        extra_id = f"{time.time() + timeout}:{self.ls_index}:{random.random()}"
         query["@extra"] = extra_id
 
         self.loop.run_in_executor(None, lambda: self.send(query))

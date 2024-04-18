@@ -40,7 +40,7 @@ class Cell:
         for r in self.refs:
             q = r.bytes_hash()
             repr_array.append(q)
-        x = bytes()
+        x = b""
         for r in repr_array:
             x = concat_bytes(x, r)
         return x
@@ -138,7 +138,7 @@ class Cell:
 
         cells_num = len(topological_order)
         # Minimal number of bits to represent reference (unused?)
-        s = len("{0:b}".format(cells_num))
+        s = len(f"{cells_num:b}")
         s_bytes = max(math.ceil(s / 8), 1)
         full_size = 0
         cell_sizes = {}
@@ -148,7 +148,7 @@ class Cell:
             )
             full_size += cell_sizes[_hash]
 
-        offset_bits = len("{0:b}".format(full_size))
+        offset_bits = len(f"{full_size:b}")
         offset_bytes = max(math.ceil(offset_bits / 8), 1)
 
         serialization = BitString(

@@ -1,6 +1,5 @@
 import decimal
 from enum import Enum
-from typing import Union
 
 from ...boc import Cell
 from ...utils import Address, sign_message
@@ -46,7 +45,7 @@ class WalletContract(Contract):
         to_addr: str,
         amount: int,
         seqno: int,
-        payload: Union[Cell, str, bytes, None] = None,
+        payload: Cell | str | bytes | None = None,
         send_mode=SendModeEnum.ignore_errors | SendModeEnum.pay_gas_separately,
         dummy_signature=False,
         state_init=None,

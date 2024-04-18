@@ -94,13 +94,13 @@ select = [
     # Pyflakes
     "F",
     # pyupgrade
-    # "UP",
+    "UP",
     # flake8-bugbear
     "B",
     # flake8-simplify
     "SIM",
     # isort
-    # "I",
+    #"I",
 ]
 ignore = [
     # star imports
@@ -109,6 +109,8 @@ ignore = [
     "E731",
     # Loop control variable not used within loop body
     "B007",
+    # Abstract class without abstract methods
+    "B024",
 ]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 

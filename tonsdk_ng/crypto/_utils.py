@@ -36,7 +36,7 @@ def is_basic_seed(entropy):
     seed = pbkdf2_hmac(
         "sha512",
         entropy,
-        "TON seed version".encode("utf-8"),
+        b"TON seed version",
         max(1, math.floor(PBKDF_ITERATIONS / 256)),
     )
     return seed[0] == 0

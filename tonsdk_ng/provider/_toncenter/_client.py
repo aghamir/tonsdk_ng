@@ -1,6 +1,5 @@
 import codecs
 import json
-from typing import Dict, Optional
 
 
 class ToncenterWrongResult(Exception):
@@ -9,7 +8,7 @@ class ToncenterWrongResult(Exception):
 
 
 class ToncenterClient:
-    def __init__(self, base_url: str, api_key: Optional[str]):
+    def __init__(self, base_url: str, api_key: str | None):
         self.base_url = base_url
         self.api_key = api_key
 
@@ -54,7 +53,7 @@ class ToncenterClient:
         self,
         session,
         method: str,
-        params: Dict,
+        params: dict,
         id: str = "1",
         jsonrpc: str = "2.0",
     ):
@@ -83,8 +82,8 @@ class ToncenterClient:
     async def __parse_response(self, resp):
         try:
             resp = await resp.json()
-        except Exception:  # TODO: catch correct exceptions
-            raise ToncenterWrongResult(resp.status)
+        except ValueError as err:
+            raise ToncenterWrongResult(resp.status) from err
 
         if not resp["ok"]:
             raise ToncenterWrongResult(resp["code"])

@@ -74,7 +74,7 @@ class AsyncTonlibClient:
         :param port: IPv4 TCP port
         :param key: base64 pub key of liteserver node
         :return: None
-        """
+        """  # noqa: E501
         self.semaphore = asyncio.Semaphore(self.max_parallel_requests)
 
         self.loaded_contracts_num = 0
@@ -158,7 +158,7 @@ class AsyncTonlibClient:
                 }],
                 'previous_transaction_id': internal.transactionId
             }
-        """
+        """  # noqa: E501
         account_address = prepare_address(account_address)
         from_transaction_hash = hex_to_b64str(from_transaction_hash)
 
@@ -190,7 +190,7 @@ class AsyncTonlibClient:
                 'last_transaction_id': internal.transactionId,
                 'sync_utime': int
             }
-        """
+        """  # noqa: E501
         prepare_address(address)  # TODO: understand why this is not used
         request = {
             "@type": "raw.getAccountState",
@@ -246,7 +246,7 @@ class AsyncTonlibClient:
         tvm.stackEntryUnsupported = tvm.StackEntry;
 
         smc.runResult gas_used:int53 stack:vector<tvm.StackEntry> exit_code:int32 = smc.RunResult;
-        """
+        """  # noqa: E501
         stack_data = render_tvm_stack(stack_data)
         if isinstance(method, int):
             method = {"@type": "smc.methodIdNumber", "number": method}
@@ -267,7 +267,7 @@ class AsyncTonlibClient:
         raw.sendMessage body:bytes = Ok;
 
         :param serialized_boc: bytes, serialized bag of cell
-        """
+        """  # noqa: E501
         serialized_boc = codecs.decode(
             codecs.encode(serialized_boc, "base64"), "utf-8"
         ).replace("\n", "")
@@ -282,7 +282,7 @@ class AsyncTonlibClient:
 
         query.info id:int53 valid_until:int53 body_hash:bytes  = query.Info;
 
-        """
+        """  # noqa: E501
         init_code = codecs.decode(
             codecs.encode(init_code, "base64"), "utf-8"
         ).replace("\n", "")
@@ -308,7 +308,7 @@ class AsyncTonlibClient:
     async def _raw_send_query(self, query_info):
         """
         query.send id:int53 = Ok;
-        """
+        """  # noqa: E501
         request = {"@type": "query.send", "id": query_info["id"]}
         return await self.tonlib_wrapper.execute(request)
 
@@ -323,11 +323,12 @@ class AsyncTonlibClient:
     async def raw_create_and_send_message(
         self, destination, body, initial_account_state=b""
     ):
-        # Very close to raw_create_and_send_query, but StateInit should be generated outside
         """
         raw.createAndSendMessage destination:accountAddress initial_account_state:bytes data:bytes = Ok;
+        """  # noqa: E501
 
-        """
+        # Very close to raw_create_and_send_query, but StateInit should be
+        # generated outside
         initial_account_state = codecs.decode(
             codecs.encode(initial_account_state, "base64"), "utf-8"
         ).replace("\n", "")
@@ -396,7 +397,7 @@ class AsyncTonlibClient:
         Return all transactions between from_transaction_lt and to_transaction_lt
         if to_transaction_lt and to_transaction_hash are not defined returns all transactions
         if from_transaction_lt and from_transaction_hash are not defined checks last
-        """
+        """  # noqa: E501
         if from_transaction_hash:
             from_transaction_hash = hash_to_hex(from_transaction_hash)
         if (from_transaction_lt is None) or (from_transaction_hash is None):
@@ -410,10 +411,11 @@ class AsyncTonlibClient:
                     int(addr["last_transaction_id"]["lt"]),
                     b64str_to_hex(addr["last_transaction_id"]["hash"]),
                 )
-            except KeyError:
+            except KeyError as err:
                 raise TonLibWrongResult(
                     "Can't get last_transaction_id data", addr
-                )
+                ) from err
+
         reach_lt = False
         all_transactions = []
         current_lt, curret_hash = from_transaction_lt, from_transaction_hash
@@ -737,7 +739,13 @@ class AsyncTonlibClient:
                     result["id"]["workchain"],
                     hex_without_workchain,
                 )
-            except:
+            except (
+                IndexError,
+                ValueError,
+                AttributeError,
+                TypeError,
+                KeyError,
+            ):
                 pass
         return total_result
 

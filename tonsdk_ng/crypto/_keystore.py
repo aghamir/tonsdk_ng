@@ -1,11 +1,10 @@
 import os
 from hashlib import pbkdf2_hmac
-from typing import Tuple
 
 from nacl.bindings import crypto_box_seed_keypair
 
 
-def generate_keystore_key(password: str, salt: bytes) -> Tuple[bytes, bytes]:
+def generate_keystore_key(password: str, salt: bytes) -> tuple[bytes, bytes]:
     """
     :rtype: (bytes(public_key), bytes(secret_key))
     """
