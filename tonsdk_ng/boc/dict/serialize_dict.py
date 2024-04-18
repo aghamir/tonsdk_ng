@@ -129,11 +129,7 @@ def is_same(src):
     if len(src) == 0 or len(src) == 1:
         return True
 
-    for e in src[1:]:
-        if e != src[0]:
-            return False
-
-    return True
+    return all(e == src[0] for e in src[1:])
 
 
 def detect_label_type(src, key_size):

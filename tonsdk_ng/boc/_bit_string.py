@@ -120,7 +120,8 @@ class BitString:
                 return
 
             raise Exception(
-                f"bitLength is too small for number, got number={number},bitLength={bit_length}"
+                "bitLength is too small for number, got"
+                f" number={number},bitLength={bit_length}"
             )
 
         for i in range(bit_length, 0, -1):
@@ -181,9 +182,9 @@ class BitString:
             self.write_uint(0, 4)
         else:
             amount = int(amount)
-            l = math.ceil(len(hex(amount)[2:]) / 2)  # ? [2:] removes 0x
-            self.write_uint(l, 4)
-            self.write_uint(amount, l * 8)
+            sz = math.ceil(len(hex(amount)[2:]) / 2)  # ? [2:] removes 0x
+            self.write_uint(sz, 4)
+            self.write_uint(amount, sz * 8)
 
     def write_coins(self, amount):
         self.write_grams(amount)

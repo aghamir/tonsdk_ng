@@ -6,7 +6,7 @@ from .._utils import get_tonlib_cdll_path
 
 class SyncTonLibWrapper:
     def __init__(self, cdll_path=None):
-        cdll_path = get_tonlib_cdll_path() if not cdll_path else cdll_path
+        cdll_path = cdll_path if cdll_path else get_tonlib_cdll_path()
         tonlib = CDLL(cdll_path)
 
         tonlib_json_client_create = tonlib.tonlib_client_json_create

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # class TonLib for single liteserver
 class AsyncTonLibJsonWrapper:
     def __init__(self, loop, ls_index, cdll_path=None, verbose=0):
-        cdll_path = get_tonlib_cdll_path() if not cdll_path else cdll_path
+        cdll_path = cdll_path if cdll_path else get_tonlib_cdll_path()
         tonlib = CDLL(cdll_path)
 
         tonlib_json_client_create = tonlib.tonlib_client_json_create
@@ -101,7 +101,7 @@ class AsyncTonLibJsonWrapper:
         self.restart_hook = hook
 
     def execute(self, query, timeout=10):
-        query_type = query.get("@type", "?")
+        query.get("@type", "?")
 
         extra_id = "%s:%s:%s" % (
             time.time() + timeout,
@@ -162,7 +162,8 @@ class AsyncTonLibJsonWrapper:
                         self.futures.pop(result["@extra"])
                 except Exception as e:
                     logger.error(
-                        f"Tonlib #{self.ls_index:03d} receiving result exception: {e}"
+                        f"Tonlib #{self.ls_index:03d} receiving result"
+                        f" exception: {e}"
                     )
         self.shutdown_state = "finished"
 

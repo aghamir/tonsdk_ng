@@ -1,10 +1,10 @@
-from abc import ABC
+import abc
 
 from ..boc import Cell
 from ..utils import Address
 
 
-class Contract(ABC):
+class Contract(abc.ABC):
     def __init__(self, **kwargs):
         self.options = kwargs
         self._address = (

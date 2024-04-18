@@ -72,11 +72,9 @@ def account_forms(raw_form, test_only=False):
 
 
 def read_friendly_address(address):
-    urlsafe = False
     if set(address).issubset(b64_abc):
         address_bytes = base64.b64decode(address.encode("utf8"))
     elif set(address).issubset(b64_abc_urlsafe):
-        urlsafe = True
         address_bytes = base64.urlsafe_b64decode(address.encode("utf8"))
     else:
         raise Exception("Not an address")
@@ -95,10 +93,7 @@ def read_friendly_address(address):
         bounceable = False
     else:
         raise Exception("Unknown tag")
-    if address_bytes[1:2] == b"\xff":
-        workchain = -1
-    else:
-        workchain = address_bytes[1]
+    workchain = -1 if address_bytes[1:2] == b"\xff" else address_bytes[1]
     hx = hex(int.from_bytes(address_bytes[2:-2], "big"))[2:]
     hx = (64 - len(hx)) * "0" + hx
     raw_form = str(workchain) + ":" + hx

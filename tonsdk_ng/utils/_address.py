@@ -36,10 +36,7 @@ def parse_friendly_address(addr_str):
 
     is_bounceable = tag == Address.BOUNCEABLE_TAG
 
-    if addr[1] == 0xFF:
-        workchain = -1
-    else:
-        workchain = addr[1]
+    workchain = -1 if addr[1] == 255 else addr[1]
     if workchain != 0 and workchain != -1:
         raise InvalidAddressError(f"Invalid address wc {workchain}")
 

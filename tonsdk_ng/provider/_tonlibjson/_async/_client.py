@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import contextlib
 import json
 import logging
 import random
@@ -51,7 +52,8 @@ class AsyncTonlibClient:
         if max_restarts is None or max_restarts >= 0:
             await self.init(max_restarts)
             logger.info(
-                f"Client #{self.ls_index:03d} reconnected (max_restarts: {max_restarts})"
+                f"Client #{self.ls_index:03d} reconnected (max_restarts:"
+                f" {max_restarts})"
             )
         else:
             logger.info(
@@ -189,9 +191,7 @@ class AsyncTonlibClient:
                 'sync_utime': int
             }
         """
-        account_address = prepare_address(
-            address
-        )  # TODO: understand why this is not used
+        prepare_address(address)  # TODO: understand why this is not used
         request = {
             "@type": "raw.getAccountState",
             "account_address": {"account_address": address},
@@ -201,7 +201,7 @@ class AsyncTonlibClient:
 
     async def generic_get_account_state(self, address: str):
         # TODO: understand why this is not used
-        account_address = prepare_address(address)
+        prepare_address(address)
         request = {
             "@type": "getAccountState",
             "account_address": {"account_address": address},
@@ -210,7 +210,7 @@ class AsyncTonlibClient:
 
     async def _load_contract(self, address):
         # TODO: understand why this is not used
-        account_address = prepare_address(address)
+        prepare_address(address)
         request = {
             "@type": "smc.load",
             "account_address": {"account_address": address},
@@ -399,16 +399,17 @@ class AsyncTonlibClient:
         """
         if from_transaction_hash:
             from_transaction_hash = hash_to_hex(from_transaction_hash)
-        if (from_transaction_lt == None) or (from_transaction_hash == None):
+        if (from_transaction_lt is None) or (from_transaction_hash is None):
             addr = await self.raw_get_account_state(account)
             if "@type" in addr and addr["@type"] == "error":
                 addr = await self.raw_get_account_state(account)
             if "@type" in addr and addr["@type"] == "error":
                 raise TonLibWrongResult("raw.getAccountState failed", addr)
             try:
-                from_transaction_lt, from_transaction_hash = int(
-                    addr["last_transaction_id"]["lt"]
-                ), b64str_to_hex(addr["last_transaction_id"]["hash"])
+                from_transaction_lt, from_transaction_hash = (
+                    int(addr["last_transaction_id"]["lt"]),
+                    b64str_to_hex(addr["last_transaction_id"]["hash"]),
+                )
             except KeyError:
                 raise TonLibWrongResult(
                     "Can't get last_transaction_id data", addr
@@ -427,9 +428,10 @@ class AsyncTonlibClient:
                 #  raise Exception(raw_transactions['message'])
                 # else:
                 #  raise Exception("Can't get transactions")
-            transactions, next = raw_transactions[
-                "transactions"
-            ], raw_transactions.get("previous_transaction_id", None)
+            transactions, next = (
+                raw_transactions["transactions"],
+                raw_transactions.get("previous_transaction_id", None),
+            )
             for t in transactions:
                 tlt = int(t["transaction_id"]["lt"])
                 if tlt <= to_transaction_lt:
@@ -437,8 +439,9 @@ class AsyncTonlibClient:
                     break
                 all_transactions.append(t)
             if next:
-                current_lt, curret_hash = int(next["lt"]), b64str_to_hex(
-                    next["hash"]
+                current_lt, curret_hash = (
+                    int(next["lt"]),
+                    b64str_to_hex(next["hash"]),
                 )
             else:
                 break
@@ -650,13 +653,11 @@ class AsyncTonlibClient:
 
         # TODO automatically check incompleteness and download all txes
         for tx in total_result["transactions"]:
-            try:
+            with contextlib.suppress(Exception):
                 tx["account"] = "%d:%s" % (
                     result["id"]["workchain"],
                     b64str_to_hex(tx["account"]),
                 )
-            except:
-                pass
         return total_result
 
     async def get_block_transactions_ext(
@@ -810,11 +811,8 @@ class AsyncTonlibClient:
                                 len(tx_source)
                                 and detect_address(tx_source)["raw_form"]
                                 == src["raw_form"]
-                            ):
-                                if int(in_msg["created_lt"]) == int(
-                                    creation_lt
-                                ):
-                                    return tx
+                            ) and int(in_msg["created_lt"]) == int(creation_lt):
+                                return tx
                         except KeyError:
                             pass
         raise Exception("Tx not found")
@@ -860,9 +858,8 @@ class AsyncTonlibClient:
                             if (
                                 detect_address(msg["destination"])["raw_form"]
                                 == dest["raw_form"]
-                            ):
-                                if int(msg["created_lt"]) == int(creation_lt):
-                                    return tx
+                            ) and int(msg["created_lt"]) == int(creation_lt):
+                                return tx
                     except KeyError:
                         pass
         raise Exception("Tx not found")

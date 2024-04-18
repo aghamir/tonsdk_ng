@@ -209,7 +209,7 @@ def deserialize_cell_data(cell_data, reference_index_size):
 
     d1, d2 = cell_data[0], cell_data[1]
     cell_data = cell_data[2:]
-    level = math.floor(d1 / 32)
+    math.floor(d1 / 32)
     is_exotic = d1 & 8
     ref_num = d1 % 8
     data_bytes_size = math.ceil(d2 / 2)
@@ -338,7 +338,7 @@ def parse_boc_header(serialized_boc):
 
 
 def deserialize_boc(serialized_boc):
-    if type(serialized_boc) == str:
+    if isinstance(serialized_boc, str):
         serialized_boc = bytes.fromhex(serialized_boc)
 
     header = parse_boc_header(serialized_boc)

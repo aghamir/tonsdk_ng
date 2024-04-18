@@ -11,12 +11,17 @@ from pathlib import Path
 
 
 class TonLibWrongResult(Exception):
-    def __init__(self, description, result={}):
+    def __init__(self, description, result=None):
+        if result is None:
+            result = {}
         self.description = description
         self.result = result
 
     def __str__(self):
-        return f"{self.description} - unexpected lite server response:\n\t{json.dumps(self.result)}"
+        return (
+            f"{self.description} - unexpected lite server"
+            f" response:\n\t{json.dumps(self.result)}"
+        )
 
 
 def get_tonlib_cdll_path():
