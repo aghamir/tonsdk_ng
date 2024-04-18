@@ -39,8 +39,8 @@ class HighloadWalletV2Contract(HighloadWalletContractBase):
         timeout=60,
         dummy_signature=False,
     ):
-        if query_id < int(time.time() + timeout) << 32:
-            query_id = int(time.time() + timeout) << 32 + query_id
+        if query_id < (t := int(time.time() + timeout) << 32):
+            query_id = t + query_id
 
         signing_message = self.create_signing_message(query_id)
         recipients = begin_dict(16)
