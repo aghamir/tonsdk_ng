@@ -1,4 +1,7 @@
-import httpx
+import httpj
+
+from tonsdk_ng.boc import Cell
+from tonsdk_ng.utils import b64str_to_bytes
 
 
 class ToncenterClient:
@@ -10,7 +13,9 @@ class ToncenterClient:
         headers = {"Content-Type": "application/json"}
         if api_key:
             headers["X-API-Key"] = api_key
-        self.client = httpx.Client(base_url=base_url, headers=headers)
+        self.client = httpj.Client(
+            base_url=base_url.rstrip("/"), headers=headers
+        )
 
     def send(self, method, params):
         params = {k: v for k, v in params.items() if v is not None}
@@ -66,10 +71,13 @@ class ToncenterClient:
     def get_estimate_fee(self, query):
         return self.send("estimateFee", query)
 
-    def call(self, address, method, params=[]):
+    def run_get_method(
+        self, address: str, method: str, stack: list | None = None
+    ):
+        stack = stack or []
         return self.send(
             "runGetMethod",
-            {"address": address, "method": method, "stack": params},
+            {"address": address, "method": method, "stack": stack},
         )
 
     def get_config_param(self, config_param_id):
@@ -82,7 +90,7 @@ class ToncenterClient:
             raise Exception("getConfigParam expected type tvm.cell")
         if "bytes" not in raw_result["config"]:
             raise Exception("getConfigParam expected bytes")
-        return Cell.one_from_boc(base64_to_bytes(raw_result["config"]["bytes"]))
+        return Cell.one_from_boc(b64str_to_bytes(raw_result["config"]["bytes"]))
 
     def get_masterchain_info(self):
         return self.send("getMasterchainInfo", {})
