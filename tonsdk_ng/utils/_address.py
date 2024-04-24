@@ -1,8 +1,12 @@
 import base64
 import ctypes
+import typing
 
 from ._exceptions import InvalidAddressError
 from ._utils import crc16, string_to_bytes
+
+if typing.TYPE_CHECKING:
+    from tonsdk_ng.boc import Cell
 
 
 def parse_friendly_address(addr_str):
@@ -103,6 +107,15 @@ class Address:
             self.hash_part = parse_result["hash_part"]
             self.is_test_only = parse_result["is_test_only"]
             self.is_bounceable = parse_result["is_bounceable"]
+
+    @classmethod
+    def from_cell(cls, cell: Cell) -> "Address" | None:
+        data = "".join([str(cell.bits.get(x)) for x in range(cell.bits.length)])
+        if len(data) < 267:
+            return None
+        wc = int(data[3:11], 2)
+        hashpart = int(data[11 : 11 + 256], 2).to_bytes(32, "big").hex()
+        return cls(f"{wc if wc != 255 else -1}:{hashpart}")
 
     def to_string(
         self,
