@@ -1,5 +1,5 @@
-from ....boc import Cell
-from ....utils import Address
+from tonsdk_ng.types import Address, Cell
+
 from ... import Contract
 
 

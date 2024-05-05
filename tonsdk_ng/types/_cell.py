@@ -1,15 +1,22 @@
 import copy
 import math
+import typing
 from hashlib import sha256
+from typing import NamedTuple
 
-from ..utils import (
-    compare_bytes,
-    concat_bytes,
+from typing_extensions import Self
+
+from tonsdk_ng.utils import (
+    bytes_to_b64str,
     crc32c,
     read_n_bytes_uint_from_array,
     tree_walk,
 )
+
 from ._bit_string import BitString
+
+if typing.TYPE_CHECKING:
+    from ._slice import Slice
 
 
 class Cell:
@@ -17,58 +24,52 @@ class Cell:
     LEAN_BOC_MAGIC_PREFIX = bytes.fromhex("68ff65f3")
     LEAN_BOC_MAGIC_PREFIX_CRC = bytes.fromhex("acc3a728")
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.bits = BitString(1023)
-        self.refs = []
+        self.refs: list[Cell] = []
         self.is_exotic = False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Cell refs_num: %d, %s>" % (len(self.refs), repr(self.bits))
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.bits.cursor) or bool(self.refs)
 
-    def bytes_hash(self):
+    def bytes_hash(self) -> bytes:
         return sha256(self.bytes_repr()).digest()
 
-    def bytes_repr(self):
+    def bytes_repr(self) -> bytes:
         repr_array = list()
         repr_array.append(self.get_data_with_descriptors())
-        for r in self.refs:
-            q = r.get_max_depth_as_array()
-            repr_array.append(q)
-        for r in self.refs:
-            q = r.bytes_hash()
-            repr_array.append(q)
-        x = b""
-        for r in repr_array:
-            x = concat_bytes(x, r)
-        return x
+        for ref in self.refs:
+            repr_array.append(ref.get_max_depth_as_array())
+        for ref in self.refs:
+            repr_array.append(ref.bytes_hash())
+        return b"".join(repr_array)
 
-    def write_cell(self, another_cell):
+    def write_cell(self, another_cell: Self) -> None:
         self.bits.write_bit_string(another_cell.bits)
         self.refs += another_cell.refs
 
-    def get_data_with_descriptors(self):
+    def get_data_with_descriptors(self) -> bytes:
         d1 = self.get_refs_descriptor()
         d2 = self.get_bits_descriptor()
         tuBits = self.bits.get_top_upped_array()
+        return d1 + d2 + tuBits
 
-        return concat_bytes(concat_bytes(d1, d2), tuBits)
-
-    def get_bits_descriptor(self):
+    def get_bits_descriptor(self) -> bytearray:
         d2 = bytearray([0])
         d2[0] = math.ceil(self.bits.cursor / 8) + math.floor(
             self.bits.cursor / 8
         )
         return d2
 
-    def get_refs_descriptor(self):
+    def get_refs_descriptor(self) -> bytearray:
         d1 = bytearray([0])
         d1[0] = len(self.refs) + self.is_exotic * 8 + self.get_max_level() * 32
         return d1
 
-    def get_max_level(self):
+    def get_max_level(self) -> int:
         if self.is_exotic:
             raise NotImplementedError(
                 "Calculating max level for exotic cells is not implemented"
@@ -80,11 +81,11 @@ class Cell:
                 max_level = r_max_level
         return max_level
 
-    def get_max_depth_as_array(self):
+    def get_max_depth_as_array(self) -> bytearray:
         max_depth = self.get_max_depth()
         return bytearray([max_depth // 256, max_depth % 256])
 
-    def get_max_depth(self):
+    def get_max_depth(self) -> int:
         max_depth = 0
         if len(self.refs) > 0:
             for r in self.refs:
@@ -94,13 +95,15 @@ class Cell:
             max_depth += 1
         return max_depth
 
-    def tree_walk(self):
+    def tree_walk(self) -> tuple[list[tuple[bytes, "Cell"]], dict[bytes, int]]:
         return tree_walk(self, [], {})
 
-    def is_explicitly_stored_hashes(self):
+    def is_explicitly_stored_hashes(self) -> int:
         return 0
 
-    def serialize_for_boc(self, cells_index, ref_size):
+    def serialize_for_boc(
+        self, cells_index: dict[bytes, int], ref_size: int
+    ) -> bytes:
         repr_arr = []
 
         repr_arr.append(self.get_data_with_descriptors())
@@ -118,18 +121,20 @@ class Cell:
             reference = bytes.fromhex(ref_index_hex)
             repr_arr.append(reference)
 
-        x = b""
-        for data in repr_arr:
-            x = concat_bytes(x, data)
+        return b"".join(repr_arr)
 
-        return x
-
-    def boc_serialization_size(self, cells_index, ref_size):
+    def boc_serialization_size(
+        self, cells_index: dict[bytes, int], ref_size: int
+    ) -> int:
         return len(self.serialize_for_boc(cells_index, ref_size))
 
     def to_boc(
-        self, has_idx=True, hash_crc32=True, has_cache_bits=False, flags=0
-    ):
+        self,
+        has_idx: bool = True,
+        hash_crc32: bool = True,
+        has_cache_bits: bool = False,
+        flags: int = 0,
+    ) -> bytes:
         root_cell = copy.deepcopy(self)
 
         all_cells = root_cell.tree_walk()
@@ -188,13 +193,29 @@ class Cell:
 
         return ser_arr
 
-    def begin_parse(self):
+    def to_boc_b64str(
+        self,
+        has_idx: bool = True,
+        hash_crc32: bool = True,
+        has_cache_bits: bool = False,
+        flags: int = 0,
+    ) -> str:
+        return bytes_to_b64str(
+            self.to_boc(
+                has_idx=has_idx,
+                hash_crc32=hash_crc32,
+                has_cache_bits=has_cache_bits,
+                flags=flags,
+            )
+        )
+
+    def begin_parse(self) -> Slice:
         from ._slice import Slice
 
         return Slice(self)
 
     @staticmethod
-    def one_from_boc(serialized_boc):
+    def one_from_boc(serialized_boc: str | bytes) -> "Cell":
         cells = deserialize_boc(serialized_boc)
 
         if len(cells) != 1:
@@ -203,7 +224,9 @@ class Cell:
         return cells[0]
 
 
-def deserialize_cell_data(cell_data, reference_index_size):
+def deserialize_cell_data(
+    cell_data: bytes, reference_index_size: int
+) -> dict[str, Cell | bytes]:
     if len(cell_data) < 2:
         raise Exception("Not enough bytes to encode cell descriptors")
 
@@ -216,7 +239,7 @@ def deserialize_cell_data(cell_data, reference_index_size):
     fullfilled_bytes = not (d2 % 2)
 
     cell = Cell()
-    cell.is_exotic = is_exotic
+    cell.is_exotic = bool(is_exotic)
 
     if len(cell_data) < data_bytes_size + reference_index_size * ref_num:
         raise Exception("Not enough bytes to encode cell data")
@@ -234,34 +257,50 @@ def deserialize_cell_data(cell_data, reference_index_size):
     return {"cell": cell, "residue": cell_data}
 
 
-def parse_boc_header(serialized_boc):
+class ParsedBocHeader(NamedTuple):
+    has_idx: bool
+    hash_crc32: bool
+    has_cache_bits: bool
+    flags: int
+    size_bytes: int
+    off_bytes: int
+    cells_num: int
+    roots_num: int
+    absent_num: int
+    tot_cells_size: int
+    root_list: list[int]
+    index_: list[int]
+    cells_data: bytes
+
+
+def parse_boc_header(serialized_boc: bytes) -> ParsedBocHeader:
     if len(serialized_boc) < 4 + 1:
         raise Exception("Not enough bytes for magic prefix")
 
     input_data = serialized_boc
     prefix = serialized_boc[:4]
     serialized_boc = serialized_boc[4:]
-    if compare_bytes(prefix, Cell.REACH_BOC_MAGIC_PREFIX):
-        flags_byte = serialized_boc[0]
-        has_idx = flags_byte & 128
-        hash_crc32 = flags_byte & 64
-        has_cache_bits = flags_byte & 32
-        flags = (flags_byte & 16) * 2 + (flags_byte & 8)
-        size_bytes = flags_byte % 8
 
-    if compare_bytes(prefix, Cell.LEAN_BOC_MAGIC_PREFIX):
-        has_idx = 1
-        hash_crc32 = 0
-        has_cache_bits = 0
-        flags = 0
-        size_bytes = serialized_boc[0]
-
-    if compare_bytes(prefix, Cell.LEAN_BOC_MAGIC_PREFIX_CRC):
-        has_idx = 1
-        hash_crc32 = 1
-        has_cache_bits = 0
-        flags = 0
-        size_bytes = serialized_boc[0]
+    match prefix:
+        case Cell.REACH_BOC_MAGIC_PREFIX:
+            flags_byte = serialized_boc[0]
+            has_idx = bool(flags_byte & 128)
+            hash_crc32 = bool(flags_byte & 64)
+            has_cache_bits = bool(flags_byte & 32)
+            flags = (flags_byte & 16) * 2 + (flags_byte & 8)
+            size_bytes = flags_byte % 8
+        case Cell.LEAN_BOC_MAGIC_PREFIX:
+            has_idx = True
+            hash_crc32 = False
+            has_cache_bits = False
+            flags = 0
+            size_bytes = serialized_boc[0]
+        case Cell.LEAN_BOC_MAGIC_PREFIX_CRC:
+            has_idx = True
+            hash_crc32 = True
+            has_cache_bits = False
+            flags = 0
+            size_bytes = serialized_boc[0]
 
     serialized_boc = serialized_boc[1:]
 
@@ -289,9 +328,8 @@ def parse_boc_header(serialized_boc):
         )
         serialized_boc = serialized_boc[size_bytes:]
 
-    index = False
+    index = []
     if has_idx:
-        index = []
         if len(serialized_boc) < offset_bytes * cells_num:
             raise Exception("Not enough bytes for index encoding")
         for c in range(cells_num):
@@ -310,9 +348,7 @@ def parse_boc_header(serialized_boc):
             raise Exception("Not enough bytes for crc32c hashsum")
 
         length = len(input_data)
-        if not compare_bytes(
-            crc32c(input_data[: length - 4]), serialized_boc[:4]
-        ):
+        if crc32c(input_data[: length - 4]) != serialized_boc[:4]:
             raise Exception("Crc32c hashsum mismatch")
 
         serialized_boc = serialized_boc[4:]
@@ -320,37 +356,37 @@ def parse_boc_header(serialized_boc):
     if len(serialized_boc):
         raise Exception("Too much bytes in BoC serialization")
 
-    return {
-        "has_idx": has_idx,
-        "hash_crc32": hash_crc32,
-        "has_cache_bits": has_cache_bits,
-        "flags": flags,
-        "size_bytes": size_bytes,
-        "off_bytes": offset_bytes,
-        "cells_num": cells_num,
-        "roots_num": roots_num,
-        "absent_num": absent_num,
-        "tot_cells_size": tot_cells_size,
-        "root_list": root_list,
-        "index": index,
-        "cells_data": cells_data,
-    }
+    return ParsedBocHeader(
+        has_idx=has_idx,
+        hash_crc32=hash_crc32,
+        has_cache_bits=has_cache_bits,
+        flags=flags,
+        size_bytes=size_bytes,
+        off_bytes=offset_bytes,
+        cells_num=cells_num,
+        roots_num=roots_num,
+        absent_num=absent_num,
+        tot_cells_size=tot_cells_size,
+        root_list=root_list,
+        index_=index,
+        cells_data=cells_data,
+    )
 
 
-def deserialize_boc(serialized_boc):
+def deserialize_boc(serialized_boc: str | bytes) -> list[Cell]:
     if isinstance(serialized_boc, str):
         serialized_boc = bytes.fromhex(serialized_boc)
 
     header = parse_boc_header(serialized_boc)
-    cells_data = header["cells_data"]
-    cells_array = []
+    cells_data = header.cells_data
+    cells_array: list[Cell] = []
 
-    for ci in range(header["cells_num"]):
-        dd = deserialize_cell_data(cells_data, header["size_bytes"])
+    for ci in range(header.cells_num):
+        dd = deserialize_cell_data(cells_data, header.size_bytes)
         cells_data = dd["residue"]
         cells_array.append(dd["cell"])
 
-    for ci in reversed(range(header["cells_num"])):
+    for ci in reversed(range(header.cells_num)):
         c = cells_array[ci]
         for ri in range(len(c.refs)):
             r = c.refs[ri]
@@ -359,7 +395,7 @@ def deserialize_boc(serialized_boc):
             c.refs[ri] = cells_array[r]
 
     root_cells = []
-    for ri in header["root_list"]:
+    for ri in header.root_list:
         root_cells.append(cells_array[ri])
 
     return root_cells

@@ -55,7 +55,7 @@ def to_nano(number: int | float | str | decimal.Decimal, unit: str) -> int:
         )
 
     s_number = str(number)
-    unit_value = units[unit.lower()]
+    unit_value = units[TonCurrencyEnum(unit.lower())]
 
     if d_number == decimal.Decimal(0):
         return 0
@@ -71,7 +71,8 @@ def to_nano(number: int | float | str | decimal.Decimal, unit: str) -> int:
 
     with decimal.localcontext() as ctx:
         ctx.prec = 999
-        result_value = decimal.Decimal(value=d_number, context=ctx) * unit_value
+        result_value = decimal.Decimal(
+            value=d_number, context=ctx) * unit_value
 
     if result_value < MIN_VAL or result_value > MAX_VAL:
         raise ValueError(
@@ -106,7 +107,7 @@ def from_nano(number: int, unit: str) -> int | decimal.Decimal:
     if number < MIN_VAL or number > MAX_VAL:
         raise ValueError("value must be between 1 and 2**256 - 1")
 
-    unit_value = units[unit.lower()]
+    unit_value = units[TonCurrencyEnum(unit.lower())]
 
     with decimal.localcontext() as ctx:
         ctx.prec = 999

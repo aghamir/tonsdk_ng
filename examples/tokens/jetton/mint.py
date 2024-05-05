@@ -1,12 +1,12 @@
-from tonsdk_ng.contract import Address
 from tonsdk_ng.contract.token.ft import JettonMinter, JettonWallet
 from tonsdk_ng.contract.wallet import Wallets, WalletVersionEnum
+from tonsdk_ng.types import Address
 from tonsdk_ng.utils import bytes_to_b64str, to_nano
 
 
 def create_jetton_minter():
     minter = JettonMinter(
-        admin_address=Address("admin address"),
+        admin_address=Address.from_string("admin address"),
         jetton_content_uri="https://raw.githubusercontent.com/yungwine/pyton-lessons/master/lesson-6/token_data.json",
         jetton_wallet_code_hex=JettonWallet.code,
     )
@@ -18,7 +18,7 @@ def create_mint_body():
     minter = create_jetton_minter()
 
     body = minter.create_mint_body(
-        destination=Address("address"),
+        destination=Address.from_string("address"),
         jetton_amount=to_nano(int("mint amount"), "ton"),
     )
     return body
@@ -28,7 +28,7 @@ def create_change_owner_body():
     minter = create_jetton_minter()
 
     body = minter.create_change_admin_body(
-        new_admin_address=Address(
+        new_admin_address=Address.from_string(
             "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
         )
     )

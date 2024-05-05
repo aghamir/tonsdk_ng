@@ -1,6 +1,6 @@
 import bitarray
 
-from ..utils._address import Address
+from ._address import Address
 from ._cell import Cell
 
 
@@ -11,19 +11,19 @@ class Slice:
         self.bits = bitarray.bitarray()
         self.bits.frombytes(cell.bits.array)
         self.bits = self.bits[: cell.bits.cursor]
-        self.refs = cell.refs
+        self.refs: list[Cell] = cell.refs
         self.ref_offset = 0
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.bits)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return hex(int(self.bits.to01(), 2))[2:].upper()
 
     def is_empty(self) -> bool:
         return len(self.bits) == 0
 
-    def end_parse(self):
+    def end_parse(self) -> None:
         """Throws an exception if the slice is not empty."""
         if not self.is_empty() or self.ref_offset != len(self.refs):
             raise Exception("Slice is not empty.")
@@ -32,10 +32,10 @@ class Slice:
         """Reads single bit from the slice."""
         bit = self.bits[0]
         del self.bits[0]
-        return bit
+        return int(bit)
 
     def preload_bit(self) -> int:
-        return self.bits[0]
+        return int(self.bits[0])
 
     def read_bits(self, bit_count: int) -> bitarray.bitarray:
         bits = self.bits[:bit_count]
@@ -45,7 +45,7 @@ class Slice:
     def preload_bits(self, bit_count: int) -> bitarray.bitarray:
         return self.bits[:bit_count]
 
-    def skip_bits(self, bit_count: int):
+    def skip_bits(self, bit_count: int) -> None:
         del self.bits[:bit_count]
 
     def read_uint(self, bit_length: int) -> int:
@@ -61,7 +61,7 @@ class Slice:
         length = bytes_count * 8
         value = self.bits[:length]
         del self.bits[:length]
-        return value.tobytes()
+        return bytes(value.tobytes())
 
     def read_int(self, bit_length: int) -> int:
         if bit_length == 1:
@@ -72,7 +72,7 @@ class Slice:
             value = self.read_uint(bit_length - 1)
             if is_negative == 1:
                 # ones complement
-                return -(2 ** (bit_length - 1) - value)
+                return int(-(2 ** (bit_length - 1) - value))
             else:
                 return value
 
@@ -90,7 +90,7 @@ class Slice:
         self.read_bit()  # anycast
         workchain_id = hex(self.read_int(8)).replace("0x", "")
         hashpart = self.read_bytes(32).hex()
-        return Address(workchain_id + ":" + hashpart)
+        return Address.from_string(workchain_id + ":" + hashpart)
 
     def read_coins(self) -> int:
         """Reads an amount of coins from the slice. Returns nanocoins."""
@@ -136,5 +136,5 @@ class Slice:
         else:
             return None
 
-    def skip_dict(self):
+    def skip_dict(self) -> None:
         self.load_dict()

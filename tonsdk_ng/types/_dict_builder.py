@@ -1,3 +1,5 @@
+from typing_extensions import Self
+
 from ._cell import Cell
 from .dict import serialize_dict
 
@@ -5,10 +7,10 @@ from .dict import serialize_dict
 class DictBuilder:
     def __init__(self, key_size: int):
         self.key_size = key_size
-        self.items = {}
+        self.items: dict[int, Cell] = {}
         self.ended = False
 
-    def store_cell(self, index, value: Cell):
+    def store_cell(self, index: int | bytes, value: Cell) -> Self:
         assert self.ended is False, "Already ended"
         if isinstance(index, bytes):
             index = int(index.hex(), 16)
@@ -18,7 +20,7 @@ class DictBuilder:
         self.items[index] = value
         return self
 
-    def store_ref(self, index, value: Cell):
+    def store_ref(self, index: int | bytes, value: Cell) -> Self:
         assert self.ended is False, "Already ended"
 
         cell = Cell()
@@ -32,7 +34,7 @@ class DictBuilder:
         if not self.items:
             return Cell()  # ?
 
-        def default_serializer(src, dest):
+        def default_serializer(src: Cell, dest: Cell):
             dest.write_cell(src)
 
         return serialize_dict(self.items, self.key_size, default_serializer)
@@ -43,5 +45,5 @@ class DictBuilder:
         return self.end_dict()
 
 
-def begin_dict(key_size):
+def begin_dict(key_size: int) -> DictBuilder:
     return DictBuilder(key_size)

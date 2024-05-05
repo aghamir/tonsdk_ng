@@ -1,14 +1,15 @@
 import decimal
 import time
 
-from ...boc import Cell, begin_cell, begin_dict
-from ...utils import Address, sign_message
+from tonsdk_ng.types import Address, Cell, begin_cell, begin_dict
+from tonsdk_ng.utils import sign_message
+
 from .. import Contract
 from ._wallet_contract import WalletContract
 
 
 class HighloadWalletContractBase(WalletContract):
-    def create_data_cell(self):
+    def create_data_cell(self) -> Cell:
         return (
             begin_cell()
             .store_uint(self.options["wallet_id"], 32)

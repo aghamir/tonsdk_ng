@@ -1,18 +1,20 @@
 import codecs
-import ctypes
 import math
-import struct
+import typing
 
 import nacl
 from nacl.bindings import crypto_sign, crypto_sign_BYTES
 from nacl.signing import SignedMessage
 
+if typing.TYPE_CHECKING:
+    from tonsdk_ng.types import Cell
 
-def concat_bytes(a, b):
-    return a + b  # ?
 
-
-def move_to_end(index_hashmap, topological_order_arr, target):
+def move_to_end(
+    index_hashmap: dict[bytes, int],
+    topological_order_arr: list[tuple[bytes, Cell]],
+    target: bytes,
+) -> tuple[list[tuple[bytes, Cell]], dict[bytes, int]]:
     target_index = index_hashmap[target]
     for _hash in index_hashmap:
         if index_hashmap[_hash] > target_index:
@@ -24,10 +26,15 @@ def move_to_end(index_hashmap, topological_order_arr, target):
         topological_order_arr, index_hashmap = move_to_end(
             index_hashmap, topological_order_arr, sub_cell.bytes_hash()
         )
-    return [topological_order_arr, index_hashmap]
+    return topological_order_arr, index_hashmap
 
 
-def tree_walk(cell, topological_order_arr, index_hashmap, parent_hash=None):
+def tree_walk(
+    cell: Cell,
+    topological_order_arr: list[tuple[bytes, Cell]],
+    index_hashmap: dict[bytes, int],
+    parent_hash: bytes | None = None,
+) -> tuple[list[tuple[bytes, Cell]], dict[bytes, int]]:
     cell_hash = cell.bytes_hash()
     if cell_hash in index_hashmap:
         if (
@@ -37,47 +44,34 @@ def tree_walk(cell, topological_order_arr, index_hashmap, parent_hash=None):
             topological_order_arr, index_hashmap = move_to_end(
                 index_hashmap, topological_order_arr, cell_hash
             )
-        return [topological_order_arr, index_hashmap]
+        return topological_order_arr, index_hashmap
 
     index_hashmap[cell_hash] = len(topological_order_arr)
-    topological_order_arr.append([cell_hash, cell])
+    topological_order_arr.append((cell_hash, cell))
     for sub_cell in cell.refs:
         topological_order_arr, index_hashmap = tree_walk(
             sub_cell, topological_order_arr, index_hashmap, cell_hash
         )
-    return [topological_order_arr, index_hashmap]
+    return topological_order_arr, index_hashmap
 
 
-def _crc32c(crc, bytes_arr):
+def _crc32c(crc: int, b: bytes) -> int:
     POLY = 0x82F63B78
 
     crc ^= 0xFFFFFFFF
-
-    for n in range(len(bytes_arr)):
-        crc ^= bytes_arr[n]
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-        crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
-
+    for n in range(len(b)):
+        crc ^= b[n]
+        for _ in range(8):
+            crc = (crc >> 1) ^ POLY if crc & 1 else crc >> 1
     return crc ^ 0xFFFFFFFF
 
 
-def crc32c(bytes_array):
-    int_crc = _crc32c(0, bytes_array)
-
-    # TODO: check mistakes
-    arr = bytearray(4)
-    struct.pack_into(">I", arr, 0, int_crc)
-
-    return bytes(arr)[::-1]
+def crc32c(b: bytes | bytearray) -> bytes:
+    int_crc = _crc32c(0, b)
+    return bytes(int_crc.to_bytes(4, byteorder="little"))
 
 
-def crc16(data):
+def crc16(data: bytes | bytearray) -> bytes:
     POLY = 0x1021
     reg = 0
     message = bytes(data) + bytes(2)
@@ -93,10 +87,12 @@ def crc16(data):
                 reg &= 0xFFFF
                 reg ^= POLY
 
-    return bytearray([math.floor(reg / 256), reg % 256])
+    return bytes([math.floor(reg / 256), reg % 256])
 
 
-def read_n_bytes_uint_from_array(size_bytes, uint8_array):
+def read_n_bytes_uint_from_array(
+    size_bytes: int, uint8_array: bytes | bytearray
+) -> int:
     res = 0
     for c in range(size_bytes):
         res *= 256
@@ -105,28 +101,19 @@ def read_n_bytes_uint_from_array(size_bytes, uint8_array):
     return res
 
 
-def compare_bytes(bytes_1, bytes_2):
-    return str(bytes_1) == str(bytes_2)  # why str?
-
-
-def string_to_bytes(string, size=1):  # ?
+def string_to_bytes(string: str, size: int = 1) -> bytes:
     if size == 1:
-        buf = (ctypes.c_uint8 * len(string))()
+        buf = bytearray(string, "utf-8")
     elif size == 2:
-        buf = (ctypes.c_uint16 * len(string) * 2)()
+        buf = bytearray(string, "utf-16")
     elif size == 4:
-        buf = (ctypes.c_uint32 * len(string) * 4)()
-
-    for i, c in enumerate(string):
-        # buf[i] = ord(c)
-        buf[i] = c  # ?
-
+        buf = bytearray(string, "utf-32")
     return bytes(buf)
 
 
 def sign_message(
     message: bytes,
-    signing_key,
+    signing_key: bytes,
     encoder: nacl.encoding.Encoder = nacl.encoding.RawEncoder,
 ) -> SignedMessage:
     raw_signed = crypto_sign(message, signing_key)
@@ -138,18 +125,18 @@ def sign_message(
     return SignedMessage._from_parts(signature, message, signed)
 
 
-def b64str_to_bytes(b64str):
+def b64str_to_bytes(b64str: str) -> bytes:
     b64bytes = codecs.encode(b64str, "utf-8")
     return codecs.decode(b64bytes, "base64")
 
 
-def b64str_to_hex(b64str):
+def b64str_to_hex(b64str: str) -> str:
     _bytes = b64str_to_bytes(b64str)
     _hex = codecs.encode(_bytes, "hex")
     return codecs.decode(_hex, "utf-8")
 
 
-def bytes_to_b64str(bytes_arr):
+def bytes_to_b64str(bytes_arr: bytes) -> str:
     return codecs.decode(codecs.encode(bytes_arr, "base64"), "utf-8").replace(
         "\n", ""
     )
