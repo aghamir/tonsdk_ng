@@ -121,7 +121,7 @@ class BitString:
             if number == 0:
                 return
 
-            raise Exception(
+            raise ValueError(
                 "bitLength is too small for number, got"
                 f" number={number},bitLength={bit_length}"
             )

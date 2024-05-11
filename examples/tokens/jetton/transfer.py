@@ -1,6 +1,7 @@
 from tonsdk_ng.contract.token.ft import JettonWallet
 from tonsdk_ng.contract.wallet import Wallets, WalletVersionEnum
-from tonsdk_ng.utils import Address, bytes_to_b64str, to_nano
+from tonsdk_ng.types import Address
+from tonsdk_ng.utils import bytes_to_b64str, to_nano
 
 """your wallet mnemonics"""
 mnemonics = [
@@ -29,14 +30,14 @@ mnemonics = [
     "piano",
     "language",
 ]
-mnemonics, pub_k, priv_k, wallet = Wallets.from_mnemonics(
+wallet = Wallets.from_mnemonics(
     mnemonics=mnemonics, version=WalletVersionEnum.v3r2, workchain=0
 )
 
 
 """transfer"""
 body = JettonWallet().create_transfer_body(
-    to_address=Address("address"),
+    to_address=Address.from_string("address"),
     jetton_amount=to_nano(float("jettons amount"), "ton"),
 )
 

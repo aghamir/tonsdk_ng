@@ -90,17 +90,6 @@ def crc16(data: bytes | bytearray) -> bytes:
     return bytes([math.floor(reg / 256), reg % 256])
 
 
-def read_n_bytes_uint_from_array(
-    size_bytes: int, uint8_array: bytes | bytearray
-) -> int:
-    res = 0
-    for c in range(size_bytes):
-        res *= 256
-        res += uint8_array[c]  # must be uint8
-
-    return res
-
-
 def string_to_bytes(string: str, size: int = 1) -> bytes:
     if size == 1:
         buf = bytearray(string, "utf-8")

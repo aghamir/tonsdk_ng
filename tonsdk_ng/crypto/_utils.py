@@ -3,13 +3,14 @@ import math
 import os
 from hashlib import pbkdf2_hmac
 
+from nacl import exceptions as exc
 from nacl.bindings import crypto_sign_ed25519_sk_to_pk
-from nacl.signing import VerifyKey, exc
+from nacl.signing import VerifyKey
 
 from ._settings import PBKDF_ITERATIONS
 
 
-def get_secure_random_number(min_v, max_v):
+def get_secure_random_number(min_v: int, max_v: int) -> int:
     range_betw = max_v - min_v
     bits_needed = math.ceil(math.log2(range_betw))
     if bits_needed > 53:
@@ -23,7 +24,7 @@ def get_secure_random_number(min_v, max_v):
         power = (bytes_needed - 1) * 8
         number_val = 0
         for i in range(bytes_needed):
-            number_val += res[i] * math.pow(2, power)
+            number_val += res[i] * 2**power
             power -= 8
         number_val = int(number_val) & int(mask)
         if number_val >= range_betw:
@@ -32,7 +33,7 @@ def get_secure_random_number(min_v, max_v):
         return min_v + number_val
 
 
-def is_basic_seed(entropy):
+def is_basic_seed(entropy: bytes) -> bool:
     seed = pbkdf2_hmac(
         "sha512",
         entropy,
@@ -42,11 +43,13 @@ def is_basic_seed(entropy):
     return seed[0] == 0
 
 
-def private_key_to_public_key(priv_k: bytes):
+def private_key_to_public_key(priv_k: bytes) -> bytes:
     return crypto_sign_ed25519_sk_to_pk(priv_k)
 
 
-def verify_sign(public_key: bytes, signed_message: bytes, signature: bytes):
+def verify_sign(
+    public_key: bytes, signed_message: bytes, signature: bytes
+) -> bool:
     key = VerifyKey(public_key)
     try:
         key.verify(signed_message, signature)

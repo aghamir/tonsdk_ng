@@ -1,9 +1,30 @@
-import decimal
 from enum import Enum
+from typing import Any, TypedDict
 
-from ...boc import Cell
-from ...utils import Address, sign_message
+from ...types import Address, Cell
+from ...utils import sign_message
 from .. import Contract
+
+
+class InitExternalMessage(TypedDict):
+    address: Address
+    signing_message: Cell
+    message: Cell
+    body: Cell
+    state_init: Cell | None
+    code: Cell | None
+    data: Cell | None
+
+
+class ExternalMessage(TypedDict):
+    address: Address
+    signature: bytes
+    signing_message: Cell
+    message: Cell
+    body: Cell
+    state_init: Cell | None
+    code: Cell | None
+    data: Cell | None
 
 
 class SendModeEnum(int, Enum):
@@ -18,7 +39,7 @@ class SendModeEnum(int, Enum):
 
 
 class WalletContract(Contract):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         if (
             ("public_key" not in kwargs or "private_key" not in kwargs)
             and "address" not in kwargs
@@ -28,13 +49,13 @@ class WalletContract(Contract):
             )
         super().__init__(**kwargs)
 
-    def create_data_cell(self):
+    def create_data_cell(self) -> Cell:
         cell = Cell()
         cell.bits.write_uint(0, 32)
         cell.bits.write_bytes(self.options["public_key"])
         return cell
 
-    def create_signing_message(self, seqno=None):
+    def create_signing_message(self, seqno: int | None = None) -> Cell:
         seqno = seqno or 0
         cell = Cell()
         cell.bits.write_uint(seqno, 32)
@@ -46,10 +67,11 @@ class WalletContract(Contract):
         amount: int,
         seqno: int,
         payload: Cell | str | bytes | None = None,
-        send_mode=SendModeEnum.ignore_errors | SendModeEnum.pay_gas_separately,
-        dummy_signature=False,
-        state_init=None,
-    ):
+        send_mode: int = SendModeEnum.ignore_errors
+        | SendModeEnum.pay_gas_separately,
+        dummy_signature: bool = False,
+        state_init: Cell | None = None,
+    ) -> ExternalMessage:
         payload_cell = Cell()
         if payload:
             if isinstance(payload, str):
@@ -61,7 +83,7 @@ class WalletContract(Contract):
                 payload_cell.bits.write_bytes(payload)
 
         order_header = Contract.create_internal_message_header(
-            Address(to_addr), decimal.Decimal(amount)
+            Address.from_any(to_addr), amount
         )
         order = Contract.create_common_msg_info(
             order_header, state_init, payload_cell
@@ -75,8 +97,8 @@ class WalletContract(Contract):
         )
 
     def create_external_message(
-        self, signing_message, seqno, dummy_signature=False
-    ):
+        self, signing_message: Cell, seqno: int, dummy_signature: bool = False
+    ) -> ExternalMessage:
         signature = (
             bytes(64)
             if dummy_signature
@@ -114,7 +136,7 @@ class WalletContract(Contract):
             "data": data,
         }
 
-    def create_init_external_message(self):
+    def create_init_external_message(self) -> InitExternalMessage:
         create_state_init = self.create_state_init()
         state_init = create_state_init["state_init"]
         address = create_state_init["address"]

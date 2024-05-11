@@ -1,5 +1,5 @@
-import decimal
 import time
+from decimal import Decimal
 
 from tonsdk_ng.types import Address, Cell, begin_cell, begin_dict
 from tonsdk_ng.utils import sign_message
@@ -58,8 +58,8 @@ class HighloadWalletV2Contract(HighloadWalletContractBase):
                     payload_cell.bits.write_bytes(recipient["payload"])
 
             order_header = Contract.create_internal_message_header(
-                Address(recipient["address"]),
-                decimal.Decimal(recipient["amount"]),
+                Address.from_any(recipient["address"]),
+                Decimal(recipient["amount"]),
             )
             order = Contract.create_common_msg_info(
                 order_header, recipient.get("state_init"), payload_cell

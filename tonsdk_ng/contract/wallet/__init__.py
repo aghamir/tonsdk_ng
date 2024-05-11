@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 from ...crypto import (
     mnemonic_from_password,
@@ -35,7 +36,7 @@ class WalletVersionEnum(str, Enum):
 
 class Wallets:
     default_version = WalletVersionEnum.v4r2
-    ALL = {
+    ALL: dict[WalletVersionEnum, type[WalletContract]] = {
         WalletVersionEnum.v2r1: WalletV2ContractR1,
         WalletVersionEnum.v2r2: WalletV2ContractR2,
         WalletVersionEnum.v3r1: WalletV3ContractR1,
@@ -52,7 +53,7 @@ class Wallets:
         version: WalletVersionEnum,
         workchain: int,
         password: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], bytes, bytes, WalletContract]:
         mnemonics = (
             mnemonic_from_password(password) if password else mnemonic_new()
@@ -70,7 +71,7 @@ class Wallets:
         mnemonics: list[str],
         version: WalletVersionEnum = default_version,
         workchain: int = 0,
-        **kwargs,
+        **kwargs: Any,
     ) -> WalletContract:
         if not mnemonic_is_valid(mnemonics):
             raise InvalidMnemonicsError()
@@ -86,7 +87,7 @@ class Wallets:
         private_key: bytes,
         version: WalletVersionEnum = default_version,
         workchain: int = 0,
-        **kwargs,
+        **kwargs: Any,
     ) -> WalletContract:
         public_key = private_key_to_public_key(private_key)
         return cls.ALL[version](
@@ -102,7 +103,7 @@ class Wallets:
         mnemonics: list[str],
         version: WalletVersionEnum = default_version,
         workchain: int = 0,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[bytes, bytes]:
         wallet = cls.from_mnemonics(mnemonics, version, workchain, **kwargs)
         pub_k, priv_k = mnemonic_to_wallet_key(mnemonics)

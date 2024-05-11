@@ -1,7 +1,14 @@
 import os
 from hashlib import pbkdf2_hmac
+from typing import TypedDict
 
 from nacl.bindings import crypto_box_seed_keypair
+
+
+class Keystore(TypedDict):
+    version: int
+    salt: str
+    public_key: str
 
 
 def generate_keystore_key(password: str, salt: bytes) -> tuple[bytes, bytes]:
@@ -12,7 +19,7 @@ def generate_keystore_key(password: str, salt: bytes) -> tuple[bytes, bytes]:
     return crypto_box_seed_keypair(secret)
 
 
-def generate_new_keystore(password: str, version: int = 1):
+def generate_new_keystore(password: str, version: int = 1) -> Keystore:
     salt = os.urandom(32)
     pub_k, _ = generate_keystore_key(password, salt)
 

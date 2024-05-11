@@ -1,4 +1,4 @@
-from .._exceptions import TonSdkException
+from ..exceptions import TonSdkException
 
 
 class InvalidMnemonicsError(TonSdkException):

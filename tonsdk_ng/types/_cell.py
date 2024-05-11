@@ -1,17 +1,11 @@
 import copy
+import io
 import math
 import typing
 from hashlib import sha256
 from typing import NamedTuple
 
-from typing_extensions import Self
-
-from tonsdk_ng.utils import (
-    bytes_to_b64str,
-    crc32c,
-    read_n_bytes_uint_from_array,
-    tree_walk,
-)
+from tonsdk_ng.utils import bytes_to_b64str, crc32c, tree_walk
 
 from ._bit_string import BitString
 
@@ -20,7 +14,7 @@ if typing.TYPE_CHECKING:
 
 
 class Cell:
-    REACH_BOC_MAGIC_PREFIX = bytes.fromhex("B5EE9C72")
+    REACH_BOC_MAGIC_PREFIX = bytes.fromhex("b5ee9c72")
     LEAN_BOC_MAGIC_PREFIX = bytes.fromhex("68ff65f3")
     LEAN_BOC_MAGIC_PREFIX_CRC = bytes.fromhex("acc3a728")
 
@@ -47,7 +41,7 @@ class Cell:
             repr_array.append(ref.bytes_hash())
         return b"".join(repr_array)
 
-    def write_cell(self, another_cell: Self) -> None:
+    def write_cell(self, another_cell: "Cell") -> None:
         self.bits.write_bit_string(another_cell.bits)
         self.refs += another_cell.refs
 
@@ -216,186 +210,186 @@ class Cell:
 
     @staticmethod
     def one_from_boc(serialized_boc: str | bytes) -> "Cell":
-        cells = deserialize_boc(serialized_boc)
+        cells = from_boc_multi_root(serialized_boc)
 
         if len(cells) != 1:
-            raise Exception("Expected 1 root cell")
+            raise ValueError("Expected 1 root cell")
 
         return cells[0]
 
 
-def deserialize_cell_data(
-    cell_data: bytes, reference_index_size: int
-) -> dict[str, Cell | bytes]:
-    if len(cell_data) < 2:
-        raise Exception("Not enough bytes to encode cell descriptors")
-
-    d1, d2 = cell_data[0], cell_data[1]
-    cell_data = cell_data[2:]
-    math.floor(d1 / 32)
-    is_exotic = d1 & 8
-    ref_num = d1 % 8
-    data_bytes_size = math.ceil(d2 / 2)
-    fullfilled_bytes = not (d2 % 2)
-
-    cell = Cell()
-    cell.is_exotic = bool(is_exotic)
-
-    if len(cell_data) < data_bytes_size + reference_index_size * ref_num:
-        raise Exception("Not enough bytes to encode cell data")
-
-    cell.bits.set_top_upped_array(
-        bytearray(cell_data[:data_bytes_size]), fullfilled_bytes
-    )
-    cell_data = cell_data[data_bytes_size:]
-    for r in range(ref_num):
-        cell.refs.append(
-            read_n_bytes_uint_from_array(reference_index_size, cell_data)
-        )
-        cell_data = cell_data[reference_index_size:]
-
-    return {"cell": cell, "residue": cell_data}
-
-
-class ParsedBocHeader(NamedTuple):
-    has_idx: bool
-    hash_crc32: bool
+class Flags(NamedTuple):
+    has_index: bool
+    has_crc32c: bool
     has_cache_bits: bool
-    flags: int
-    size_bytes: int
-    off_bytes: int
-    cells_num: int
-    roots_num: int
-    absent_num: int
-    tot_cells_size: int
-    root_list: list[int]
-    index_: list[int]
-    cells_data: bytes
 
-
-def parse_boc_header(serialized_boc: bytes) -> ParsedBocHeader:
-    if len(serialized_boc) < 4 + 1:
-        raise Exception("Not enough bytes for magic prefix")
-
-    input_data = serialized_boc
-    prefix = serialized_boc[:4]
-    serialized_boc = serialized_boc[4:]
-
-    match prefix:
-        case Cell.REACH_BOC_MAGIC_PREFIX:
-            flags_byte = serialized_boc[0]
-            has_idx = bool(flags_byte & 128)
-            hash_crc32 = bool(flags_byte & 64)
-            has_cache_bits = bool(flags_byte & 32)
-            flags = (flags_byte & 16) * 2 + (flags_byte & 8)
-            size_bytes = flags_byte % 8
-        case Cell.LEAN_BOC_MAGIC_PREFIX:
-            has_idx = True
-            hash_crc32 = False
-            has_cache_bits = False
-            flags = 0
-            size_bytes = serialized_boc[0]
-        case Cell.LEAN_BOC_MAGIC_PREFIX_CRC:
-            has_idx = True
-            hash_crc32 = True
-            has_cache_bits = False
-            flags = 0
-            size_bytes = serialized_boc[0]
-
-    serialized_boc = serialized_boc[1:]
-
-    if len(serialized_boc) < 1 + 5 * size_bytes:
-        raise Exception("Not enough bytes for encoding cells counters")
-
-    offset_bytes = serialized_boc[0]
-    serialized_boc = serialized_boc[1:]
-    cells_num = read_n_bytes_uint_from_array(size_bytes, serialized_boc)
-    serialized_boc = serialized_boc[size_bytes:]
-    roots_num = read_n_bytes_uint_from_array(size_bytes, serialized_boc)
-    serialized_boc = serialized_boc[size_bytes:]
-    absent_num = read_n_bytes_uint_from_array(size_bytes, serialized_boc)
-    serialized_boc = serialized_boc[size_bytes:]
-    tot_cells_size = read_n_bytes_uint_from_array(offset_bytes, serialized_boc)
-    serialized_boc = serialized_boc[offset_bytes:]
-
-    if len(serialized_boc) < roots_num * size_bytes:
-        raise Exception("Not enough bytes for encoding root cells hashes")
-
-    root_list = []
-    for c in range(roots_num):
-        root_list.append(
-            read_n_bytes_uint_from_array(size_bytes, serialized_boc)
+    @staticmethod
+    def parse(byte: int) -> "Flags":
+        # has_idx:(## 1) has_crc32c:(## 1)  has_cache_bits:(## 1) flags:...
+        return Flags(
+            has_index=bool(byte & (1 << 7)),
+            has_crc32c=bool(byte & (1 << 6)),
+            has_cache_bits=bool(byte & (1 << 5)),
         )
-        serialized_boc = serialized_boc[size_bytes:]
 
-    index = []
-    if has_idx:
-        if len(serialized_boc) < offset_bytes * cells_num:
-            raise Exception("Not enough bytes for index encoding")
-        for c in range(cells_num):
-            index.append(
-                read_n_bytes_uint_from_array(offset_bytes, serialized_boc)
+
+def from_boc_multi_root(data: bytes | bytearray | str) -> list[Cell]:
+    if isinstance(data, str):
+        data = bytes.fromhex(data)
+
+    if len(data) < 10:
+        raise ValueError("invalid boc")
+
+    r = io.BytesIO(data)
+    match r.read(4):
+        case Cell.REACH_BOC_MAGIC_PREFIX:
+            byte = big_int(r.read(1))
+            cell_num_size_bytes = byte & 0b00000111
+            flags = Flags.parse(byte)
+        case Cell.LEAN_BOC_MAGIC_PREFIX:
+            flags = Flags(
+                has_index=True, has_crc32c=False, has_cache_bits=False
             )
-            serialized_boc = serialized_boc[offset_bytes:]
+            cell_num_size_bytes = big_int(r.read(1))
+        case Cell.LEAN_BOC_MAGIC_PREFIX_CRC:
+            flags = Flags(has_index=True, has_crc32c=True, has_cache_bits=False)
+            cell_num_size_bytes = big_int(r.read(1))
+        case _:
+            raise ValueError("Invalid BOC magic header")
+    # off_bytes:(## 8) { off_bytes <= 8 }
+    data_size_bytes = big_int(r.read(1))
+    # cells:(##(size * 8))
+    cells_num = big_int(r.read(cell_num_size_bytes))
+    # roots:(##(size * 8)) { roots >= 1 }
+    roots_num = big_int(r.read(cell_num_size_bytes))
 
-    if len(serialized_boc) < tot_cells_size:
-        raise Exception("Not enough bytes for cells data")
-    cells_data = serialized_boc[:tot_cells_size]
-    serialized_boc = serialized_boc[tot_cells_size:]
+    # complete BOCs - ??? (absent:(##(size * 8)) { roots + absent <= cells })
+    r.read(cell_num_size_bytes)
 
-    if hash_crc32:
-        if len(serialized_boc) < 4:
-            raise Exception("Not enough bytes for crc32c hashsum")
+    # tot_cells_size:(##(off_bytes * 8))
+    data_len = big_int(r.read(data_size_bytes))
 
-        length = len(input_data)
-        if crc32c(input_data[: length - 4]) != serialized_boc[:4]:
-            raise Exception("Crc32c hashsum mismatch")
+    if flags.has_crc32c and crc32c(data[:-4]) != data[-4:]:
+        raise ValueError("Checksum does not match")
 
-        serialized_boc = serialized_boc[4:]
+    roots_index = [
+        big_int(r.read(cell_num_size_bytes)) for _ in range(roots_num)
+    ]
 
-    if len(serialized_boc):
-        raise Exception("Too much bytes in BoC serialization")
+    if flags.has_cache_bits and not flags.has_index:
+        raise ValueError("Cache flag cannot be set without index flag")
 
-    return ParsedBocHeader(
-        has_idx=has_idx,
-        hash_crc32=hash_crc32,
-        has_cache_bits=has_cache_bits,
-        flags=flags,
-        size_bytes=size_bytes,
-        off_bytes=offset_bytes,
-        cells_num=cells_num,
-        roots_num=roots_num,
-        absent_num=absent_num,
-        tot_cells_size=tot_cells_size,
-        root_list=root_list,
-        index_=index,
-        cells_data=cells_data,
+    index: list[int] = []
+    if flags.has_index:
+        idx_data = r.read(cells_num * data_size_bytes)
+
+        for i in range(cells_num):
+            off = i * data_size_bytes
+            val = big_int(idx_data[off : off + data_size_bytes])
+            if flags.has_cache_bits:
+                # we don't need a cache, cause our loader uses memory
+                val //= 2
+            index.append(val)
+
+    if cells_num > data_len // 2:
+        raise ValueError(
+            f"Cells num looks malicious: data len {data_len}, cells {cells_num}"
+        )
+
+    payload = r.read(data_len)
+    cells = parse_cells(
+        roots_index, cells_num, cell_num_size_bytes, payload, index
     )
 
+    return cells
 
-def deserialize_boc(serialized_boc: str | bytes) -> list[Cell]:
-    if isinstance(serialized_boc, str):
-        serialized_boc = bytes.fromhex(serialized_boc)
 
-    header = parse_boc_header(serialized_boc)
-    cells_data = header.cells_data
-    cells_array: list[Cell] = []
+def parse_cells(
+    roots_index: list[int],
+    cells_num: int,
+    ref_sz_bytes: int,
+    data: bytes,
+    index: list[int],
+) -> list[Cell]:
+    cells = [Cell() for _ in range(cells_num)]
+    hash_size = 32
+    depth_size = 2
+    offset = 0
 
-    for ci in range(header.cells_num):
-        dd = deserialize_cell_data(cells_data, header.size_bytes)
-        cells_data = dd["residue"]
-        cells_array.append(dd["cell"])
+    for i in range(cells_num):
+        if len(data) - offset < 2:
+            raise ValueError("Failed to parse cell header, corrupted data")
 
-    for ci in reversed(range(header.cells_num)):
-        c = cells_array[ci]
-        for ri in range(len(c.refs)):
-            r = c.refs[ri]
-            if r < ci:
-                raise Exception("Topological order is broken")
-            c.refs[ri] = cells_array[r]
+        if index:
+            # if we have index, then set offset from it,
+            # it stores end of each cell
+            offset = index[i - 1] if i > 0 else 0
 
-    root_cells = []
-    for ri in header.root_list:
-        root_cells.append(cells_array[ri])
+        flags = data[offset]
+        refs_num = flags & 0b111
+        is_exotic = bool(flags & 0b1000)
+        with_hashes = bool(flags & 0b10000)
+        level_mask = flags >> 5
 
-    return root_cells
+        if refs_num > 4:
+            raise ValueError("Too many refs in cell")
+
+        ln = data[offset + 1]
+        one_more = ln % 2
+        sz = ln // 2 + one_more
+
+        offset += 2
+        if len(data) - offset < sz:
+            raise ValueError("Failed to parse cell payload, corrupted data")
+
+        if with_hashes:
+            mask_bits = int(math.ceil(math.log2(level_mask + 1)))
+            hashes_num = mask_bits + 1
+            offset += hashes_num * hash_size + hashes_num * depth_size
+
+        payload = data[offset : offset + sz]
+
+        offset += sz
+        if len(data) - offset < refs_num * ref_sz_bytes:
+            raise ValueError("Failed to parse cell refs, corrupted data")
+
+        refs_index = [
+            big_int(data[offset : offset + ref_sz_bytes])
+            for _ in range(refs_num)
+        ]
+        offset += refs_num * ref_sz_bytes
+
+        refs = []
+        for y, id in enumerate(refs_index):
+            if i == id:
+                raise ValueError("Recursive reference of cells")
+            if id < i and not index:
+                raise ValueError(
+                    "Reference to index which is behind parent cell"
+                )
+            if id >= len(cells):
+                raise ValueError("Invalid index, out of scope")
+
+            refs.append(cells[id])
+
+        bits_sz = ln * 4
+
+        # if not full byte
+        if ln % 2 != 0:
+            # find last bit of byte which indicates the end and cut it and next
+            for y in range(8):
+                if (payload[-1] >> y) & 1 == 1:
+                    bits_sz += 3 - y
+                    break
+
+        cells[i].is_exotic = is_exotic
+        cells[i].bits.write_bytes(payload)
+        cells[i].bits.length = bits_sz
+        cells[i].refs = refs
+
+    roots = [cells[idx] for idx in roots_index]
+    return roots
+
+
+def big_int(b: bytes) -> int:
+    return int.from_bytes(b, byteorder="big")

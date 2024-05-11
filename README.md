@@ -58,9 +58,10 @@ print(
 ```python
 from tonsdk_ng.contract.token.ft import JettonWallet
 from tonsdk_ng.contract.token.nft import NFTItem
-from tonsdk_ng.utils import Address, to_nano
+from tonsdk_ng.types import Address 
+from tonsdk_ng.utils import to_nano
 
-body = NFTItem().create_transfer_body(Address("New Owner Address"))
+body = NFTItem().create_transfer_body(Address.from_string("New Owner Address"))
 query = wallet.create_transfer_message(
     "NFT Item Address",
     to_nano(0.05, "ton"),
@@ -70,7 +71,7 @@ query = wallet.create_transfer_message(
 nft_boc = bytes_to_b64str(query["message"].to_boc(False))
 
 body = JettonWallet().create_transfer_body(
-    Address("Destination address"), to_nano(40000, "ton")  # jettons amount
+    Address.from_string("Destination address"), to_nano(40000, "ton")  # jettons amount
 )
 query = wallet.create_transfer_message(
     "Jetton Wallet Address",
@@ -100,7 +101,7 @@ from abc import ABC, abstractmethod
 import aiohttp
 from tvm_valuetypes import serialize_tvm_stack
 
-from tonsdk_ng.boc import Cell
+from tonsdk_ng.types import Cell
 from tonsdk_ng.provider import (
     SyncTonlibClient,
     ToncenterClient,

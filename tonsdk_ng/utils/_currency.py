@@ -71,8 +71,7 @@ def to_nano(number: int | float | str | decimal.Decimal, unit: str) -> int:
 
     with decimal.localcontext() as ctx:
         ctx.prec = 999
-        result_value = decimal.Decimal(
-            value=d_number, context=ctx) * unit_value
+        result_value = decimal.Decimal(value=d_number, context=ctx) * unit_value
 
     if result_value < MIN_VAL or result_value > MAX_VAL:
         raise ValueError(

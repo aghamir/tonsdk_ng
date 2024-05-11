@@ -1,9 +1,9 @@
 import decimal
 import time
 
-from ...boc import Cell, begin_cell, begin_dict
 from ...crypto import private_key_to_public_key, verify_sign
-from ...utils import Address, sign_message
+from ...types import Address, Cell, begin_cell, begin_dict
+from ...utils import sign_message
 from .. import Contract
 from ._wallet_contract import WalletContract
 
@@ -109,7 +109,7 @@ class MultiSigOrderBuilder:
                 payload_cell.bits.write_bytes(payload)
 
         order_header = Contract.create_internal_message_header(
-            Address(to_addr), decimal.Decimal(amount)
+            Address.from_any(to_addr), decimal.Decimal(amount)
         )
         order = Contract.create_common_msg_info(
             order_header, state_init, payload_cell

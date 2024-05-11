@@ -1,7 +1,5 @@
 import base64
-from typing import NamedTuple, cast
-
-from typing_extensions import Self
+from typing import NamedTuple
 
 from tonsdk_ng.exceptions import InvalidAddressError
 from tonsdk_ng.utils import bytes_to_b64str, crc16
@@ -32,14 +30,14 @@ class Address:
         self.is_test_only = is_test_only
 
     @classmethod
-    def from_any(cls, val: Self | Cell | str) -> Self:
-        address: Self | None = None
+    def from_any(cls, val: "Address" | Cell | str) -> "Address":
+        address: "Address" | None = None
 
         match val:
             case str():
                 address = cls.from_string(val)
             case Address():
-                address = cls.from_address(cast(Self, val))
+                address = cls.from_address(val)
             case Cell():
                 address = cls.from_cell(val)
 
@@ -49,7 +47,7 @@ class Address:
         return address
 
     @classmethod
-    def from_address(cls, addr: Self) -> Self:
+    def from_address(cls, addr: "Address") -> "Address":
         return cls(
             wc=addr.wc,
             hash_part=addr.hash_part,
@@ -60,7 +58,7 @@ class Address:
         )
 
     @classmethod
-    def from_string(cls, addr: str) -> Self:
+    def from_string(cls, addr: str) -> "Address":
         if addr.find("-") > 0 or addr.find("_") > 0:
             addr = addr.replace("-", "+").replace("_", "/")
             is_url_safe = True
@@ -108,7 +106,7 @@ class Address:
         )
 
     @classmethod
-    def from_cell(cls, cell: Cell) -> Self | None:
+    def from_cell(cls, cell: Cell) -> "Address" | None:
         data = "".join([str(cell.bits.get(x)) for x in range(cell.bits.length)])
         if len(data) < 267:
             return None

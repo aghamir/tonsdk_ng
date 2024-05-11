@@ -1,7 +1,7 @@
 from typing_extensions import Self
 
 from ._cell import Cell
-from .dict import serialize_dict
+from ._dict import serialize_dict
 
 
 class DictBuilder:
@@ -34,7 +34,7 @@ class DictBuilder:
         if not self.items:
             return Cell()  # ?
 
-        def default_serializer(src: Cell, dest: Cell):
+        def default_serializer(src: Cell, dest: Cell) -> None:
             dest.write_cell(src)
 
         return serialize_dict(self.items, self.key_size, default_serializer)

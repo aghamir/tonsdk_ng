@@ -1,12 +1,14 @@
+from collections.abc import Callable
 from math import ceil, log2
+from typing import Literal
 
-from typing_extensions import Callable, Literal, NamedTuple
+from typing_extensions import NamedTuple
 
 from .._bit_string import BitString
 from .._cell import Cell
 from .find_common_prefix import find_common_prefix
 
-Serializer = Callable[["Node" | "Edge" | Cell, Cell], None]
+Serializer = Callable[[Cell, Cell], None]
 Source = dict[str, Cell]
 SourceInt = dict[int, Cell]
 
@@ -120,7 +122,9 @@ def label_long_length(src: str, key_length: int) -> int:
     return 1 + 1 + ceil(log2(key_length + 1)) + len(src)
 
 
-def write_label_same(value: bool, length: int, key_length: int, to: BitString):
+def write_label_same(
+    value: bool, length: int, key_length: int, to: BitString
+) -> None:
     to.write_bit(1)
     to.write_bit(1)
 
@@ -159,7 +163,7 @@ def detect_label_type(src: str, key_size: int) -> str:
     return kind
 
 
-def write_label(src: str, key_size: int, to: BitString):
+def write_label(src: str, key_size: int, to: BitString) -> None:
     match detect_label_type(src, key_size):
         case "short":
             write_label_short(src, to)
@@ -169,7 +173,9 @@ def write_label(src: str, key_size: int, to: BitString):
             write_label_same(src[0] == "1", len(src), key_size, to)
 
 
-def write_node(src: Node, key_size: int, serializer: Serializer, to: Cell):
+def write_node(
+    src: Node, key_size: int, serializer: Serializer, to: Cell
+) -> None:
     match src.kind:
         case "leaf":
             assert src.value is not None
@@ -184,7 +190,9 @@ def write_node(src: Node, key_size: int, serializer: Serializer, to: Cell):
             to.refs.append(right_cell)
 
 
-def write_edge(src: Edge, key_size: int, serializer: Serializer, to: Cell):
+def write_edge(
+    src: Edge, key_size: int, serializer: Serializer, to: Cell
+) -> None:
     write_label(src.label, key_size, to.bits)
     write_node(src.node, key_size - len(src.label), serializer, to)
 

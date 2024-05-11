@@ -1,32 +1,59 @@
 import abc
+from typing import Any, TypedDict, cast
 
-from ..boc import Cell
-from ..utils import Address
+from ..types import Address, Cell
+
+
+class StateInit(TypedDict):
+    code: Cell
+    data: Cell
+    address: Address
+    state_init: Cell | None
+
+
+class Options(TypedDict):
+    wc: int
+    code: Cell
+    address: Address
+    public_key: bytes
+    private_key: bytes
+
+
+class ExternalMessage(TypedDict):
+    address: Address
+    message: Cell
+    state_init: Cell | None
+    code: Cell | None
+    data: Cell | None
 
 
 class Contract(abc.ABC):
-    def __init__(self, **kwargs):
-        self.options = kwargs
+    def __init__(self, **kwargs: Any):
+        self.options = cast(Options, kwargs)
         self._address = (
-            Address(kwargs["address"]) if "address" in kwargs else None
+            Address.from_any(kwargs["address"]) if "address" in kwargs else None
         )
         if "wc" not in kwargs:
-            kwargs["wc"] = self._address.wc if self._address is not None else 0
+            self.options["wc"] = (
+                self._address.wc if self._address is not None else 0
+            )
 
     @property
-    def address(self):
+    def address(self) -> Address:
         if self._address is None:
             self._address = self.create_state_init()["address"]
 
         return self._address
 
-    def create_state_init(self):
+    def create_state_init(self) -> StateInit:
         code_cell = self.create_code_cell()
         data_cell = self.create_data_cell()
         state_init = self.__create_state_init(code_cell, data_cell)
         state_init_hash = state_init.bytes_hash()
 
-        address = Address(str(self.options["wc"]) + ":" + state_init_hash.hex())
+        address = Address.from_string(
+            str(self.options["wc"]) + ":" + state_init_hash.hex()
+        )
 
         return {
             "code": code_cell,
@@ -35,15 +62,15 @@ class Contract(abc.ABC):
             "state_init": state_init,
         }
 
-    def create_code_cell(self):
+    def create_code_cell(self) -> Cell:
         if "code" not in self.options or self.options["code"] is None:
             raise Exception("Contract: options.code is not defined")
         return self.options["code"]
 
-    def create_data_cell(self):
+    def create_data_cell(self) -> Cell:
         return Cell()
 
-    def create_init_external_message(self):
+    def create_init_external_message(self) -> ExternalMessage:
         create_state_init = self.create_state_init()
         state_init = create_state_init["state_init"]
         address = create_state_init["address"]
@@ -60,29 +87,34 @@ class Contract(abc.ABC):
         }
 
     @classmethod
-    def create_external_message_header(cls, dest, src=None, import_fee=0):
+    def create_external_message_header(
+        cls,
+        dest: str | Address,
+        src: str | Address | None = None,
+        import_fee: int = 0,
+    ) -> Cell:
         message = Cell()
         message.bits.write_uint(2, 2)
-        message.bits.write_address(Address(src) if src else None)
-        message.bits.write_address(Address(dest))
+        message.bits.write_address(Address.from_any(src) if src else None)
+        message.bits.write_address(Address.from_any(dest))
         message.bits.write_grams(import_fee)
         return message
 
     @classmethod
     def create_internal_message_header(
         cls,
-        dest,
-        grams=0,
-        ihr_disabled=True,
-        bounce=None,
-        bounced=False,
-        src=None,
-        currency_collection=None,
-        ihr_fees=0,
-        fwd_fees=0,
-        created_lt=0,
-        created_at=0,
-    ):
+        dest: str | Address,
+        grams: int = 0,
+        ihr_disabled: bool = True,
+        bounce: bool | None = None,
+        bounced: bool = False,
+        src: str | Address | None = None,
+        currency_collection: Any | None = None,
+        ihr_fees: int = 0,
+        fwd_fees: int = 0,
+        created_lt: int = 0,
+        created_at: int = 0,
+    ) -> Cell:
         message = Cell()
         message.bits.write_bit(0)
         message.bits.write_bit(ihr_disabled)
@@ -90,12 +122,13 @@ class Contract(abc.ABC):
         if bounce is not None:
             message.bits.write_bit(bounce)
         else:
-            message.bits.write_bit(Address(dest).is_bounceable)
+            message.bits.write_bit(Address.from_any(dest).is_bounceable)
         message.bits.write_bit(bounced)
-        message.bits.write_address(Address(src) if src else None)
-        message.bits.write_address(Address(dest))
+        message.bits.write_address(Address.from_any(src) if src else None)
+        message.bits.write_address(Address.from_any(dest))
         message.bits.write_grams(grams)
         if currency_collection:
+            # TODO: implement currency collections
             raise Exception("Currency collections are not implemented yet")
 
         message.bits.write_bit(bool(currency_collection))
@@ -111,8 +144,8 @@ class Contract(abc.ABC):
         address: str,
         amount: int,
         payload: str | bytes | Cell | None = None,
-        state_init=None,
-    ):
+        state_init: Cell | None = None,
+    ) -> Cell:
         payload_cell = Cell()
         if payload:
             if isinstance(payload, Cell):
@@ -131,7 +164,12 @@ class Contract(abc.ABC):
         return order
 
     @classmethod
-    def create_common_msg_info(cls, header, state_init=None, body=None):
+    def create_common_msg_info(
+        cls,
+        header: Cell,
+        state_init: Cell | None = None,
+        body: Cell | None = None,
+    ) -> Cell:
         common_msg_info = Cell()
         common_msg_info.write_cell(header)
         if state_init:
@@ -164,9 +202,15 @@ class Contract(abc.ABC):
         return common_msg_info
 
     def __create_state_init(
-        self, code, data, library=None, split_depth=None, ticktock=None
-    ):
+        self,
+        code: Cell,
+        data: Cell,
+        library: Cell | None = None,
+        split_depth: Cell | None = None,
+        ticktock: Cell | None = None,
+    ) -> Cell:
         if library or split_depth or ticktock:
+            # TODO: implement library/split_depth/ticktock
             raise Exception(
                 "Library/SplitDepth/Ticktock in state init is not implemented"
             )

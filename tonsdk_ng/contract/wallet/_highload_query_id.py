@@ -5,7 +5,7 @@ MAX_SHIFT = 8191  # 2^13 = 8192
 
 
 class HighloadQueryId:
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes a HighloadQueryId instance with default values
 
@@ -16,7 +16,9 @@ class HighloadQueryId:
         self._bit_number = 0
 
     @staticmethod
-    def from_shift_and_bit_number(shift, bit_number):
+    def from_shift_and_bit_number(
+        shift: int, bit_number: int
+    ) -> "HighloadQueryId":
         """
         Creates a new HighloadQueryId object with specified shift and bit number
 
@@ -35,7 +37,7 @@ class HighloadQueryId:
         q._bit_number = bit_number
         return q
 
-    def get_next(self):
+    def get_next(self) -> "HighloadQueryId":
         """
         Calculates the next HighloadQueryId based on the current state
 
@@ -59,7 +61,7 @@ class HighloadQueryId:
             new_shift, new_bit_number
         )
 
-    def has_next(self):
+    def has_next(self) -> bool:
         """
         Checks if there is a next HighloadQueryId available
 
@@ -73,7 +75,7 @@ class HighloadQueryId:
         return not is_end
 
     @property
-    def shift(self):
+    def shift(self) -> int:
         """
         Gets the current shift value
 
@@ -82,7 +84,7 @@ class HighloadQueryId:
         return self._shift
 
     @property
-    def bit_number(self):
+    def bit_number(self) -> int:
         """
         Gets the current bit number value
 
@@ -91,7 +93,7 @@ class HighloadQueryId:
         return self._bit_number
 
     @property
-    def query_id(self):
+    def query_id(self) -> int:
         """
         Computes the query ID based on the current shift and bit number
 
@@ -100,7 +102,7 @@ class HighloadQueryId:
         return (self._shift << BIT_NUMBER_SIZE) + self._bit_number
 
     @staticmethod
-    def from_query_id(query_id: int):
+    def from_query_id(query_id: int) -> "HighloadQueryId":
         """
         Creates a new HighloadQueryId object from a given query ID
 
@@ -112,7 +114,7 @@ class HighloadQueryId:
         return HighloadQueryId.from_shift_and_bit_number(shift, bit_number)
 
     @staticmethod
-    def from_seqno(i: int):
+    def from_seqno(i: int) -> "HighloadQueryId":
         """
         Creates a HighloadQueryId from a sequence number
 
