@@ -1,6 +1,7 @@
 from ._address import Address
 from ._bit_string import BitString
 from ._cell import Cell
+from ._slice import Slice
 
 
 class Builder:
@@ -28,6 +29,22 @@ class Builder:
         else:
             self.bits.write_bit(0)
 
+        return self
+
+    def store_slice(self, src: Slice) -> "Builder":
+        if len(self.refs) + len(src.refs) > 4:
+            raise ValueError("refs overflow")
+        self.bits.write_bit_array(src.bits)
+        for i in range(src.ref_offset, len(src.refs)):
+            self.store_ref(src.refs[i])
+        return self
+
+    def store_maybe_slice(self, src: Slice | None) -> "Builder":
+        if src is not None:
+            self.bits.write_bit(1)
+            self.store_slice(src)
+        else:
+            self.bits.write_bit(0)
         return self
 
     def store_bit(self, value: int) -> "Builder":
