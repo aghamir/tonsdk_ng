@@ -39,6 +39,10 @@ class SendModeEnum(int, Enum):
 
 
 class WalletContract(Contract):
+    DEFAULT_SEND_MODE = (
+        SendModeEnum.ignore_errors | SendModeEnum.pay_gas_separately
+    )
+
     def __init__(self, **kwargs: Any) -> None:
         if (
             ("public_key" not in kwargs or "private_key" not in kwargs)
@@ -67,31 +71,47 @@ class WalletContract(Contract):
         amount: int,
         seqno: int,
         payload: Cell | str | bytes | None = None,
-        send_mode: int = SendModeEnum.ignore_errors
-        | SendModeEnum.pay_gas_separately,
+        send_mode: int = DEFAULT_SEND_MODE,
         dummy_signature: bool = False,
         state_init: Cell | None = None,
     ) -> ExternalMessage:
-        payload_cell = Cell()
-        if payload:
-            if isinstance(payload, str):
-                payload_cell.bits.write_uint(0, 32)
-                payload_cell.bits.write_string(payload)
-            elif isinstance(payload, Cell):
-                payload_cell = payload
-            else:
-                payload_cell.bits.write_bytes(payload)
+        return self.create_transfer_messages(
+            seqno,
+            messages=[
+                {
+                    "to_address": to_addr,
+                    "amount": amount,
+                    "payload": payload,
+                    "state_init": state_init,
+                }
+            ],
+            send_mode=send_mode,
+            dummy_signature=dummy_signature,
+        )
 
-        order_header = Contract.create_internal_message_header(
-            Address.from_any(to_addr), amount
-        )
-        order = Contract.create_common_msg_info(
-            order_header, state_init, payload_cell
-        )
+    def create_transfer_messages(
+        self,
+        seqno: int,
+        messages: list[dict[str, Any]],
+        send_mode: int = DEFAULT_SEND_MODE,
+        dummy_signature: bool = False,
+    ) -> ExternalMessage:
+        if seqno < 0:
+            raise ValueError("seqno must be integer >= 0")
+        if not (1 <= len(messages) <= 4):
+            raise ValueError("expected 1-4 messages")
         signing_message = self.create_signing_message(seqno)
-        signing_message.bits.write_uint8(send_mode)
-        signing_message.refs.append(order)
-
+        for msg in messages:
+            send_mode = msg.get("send_mode", send_mode)
+            signing_message.bits.write_uint8(send_mode)
+            signing_message.refs.append(
+                self.create_out_msg(
+                    msg["to_address"],
+                    msg["amount"],
+                    msg.get("payload"),
+                    msg.get("state_init"),
+                )
+            )
         return self.create_external_message(
             signing_message, seqno, dummy_signature
         )
