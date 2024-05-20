@@ -1,20 +1,22 @@
+from __future__ import annotations
+
 import codecs
 import math
-import typing
+from typing import TYPE_CHECKING
 
 import nacl
 from nacl.bindings import crypto_sign, crypto_sign_BYTES
 from nacl.signing import SignedMessage
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from tonsdk_ng.types import Cell
 
 
 def move_to_end(
     index_hashmap: dict[bytes, int],
-    topological_order_arr: list[tuple[bytes, Cell]],
+    topological_order_arr: list[tuple[bytes, "Cell"]],
     target: bytes,
-) -> tuple[list[tuple[bytes, Cell]], dict[bytes, int]]:
+) -> tuple[list[tuple[bytes, "Cell"]], dict[bytes, int]]:
     target_index = index_hashmap[target]
     for _hash in index_hashmap:
         if index_hashmap[_hash] > target_index:
@@ -30,11 +32,11 @@ def move_to_end(
 
 
 def tree_walk(
-    cell: Cell,
-    topological_order_arr: list[tuple[bytes, Cell]],
+    cell: "Cell",
+    topological_order_arr: list[tuple[bytes, "Cell"]],
     index_hashmap: dict[bytes, int],
     parent_hash: bytes | None = None,
-) -> tuple[list[tuple[bytes, Cell]], dict[bytes, int]]:
+) -> tuple[list[tuple[bytes, "Cell"]], dict[bytes, int]]:
     cell_hash = cell.bytes_hash()
     if cell_hash in index_hashmap:
         if (

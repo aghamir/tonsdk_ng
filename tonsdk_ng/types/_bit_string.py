@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import copy
 import math
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
-from ._address import Address
+if TYPE_CHECKING:
+    from ._address import Address
 
 
 class BitString:

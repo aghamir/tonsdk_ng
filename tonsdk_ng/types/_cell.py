@@ -1,15 +1,15 @@
+from __future__ import annotations
+
 import copy
 import io
 import math
-import typing
 from hashlib import sha256
-from typing import NamedTuple
+from typing import NamedTuple, TYPE_CHECKING
 
 from tonsdk_ng.utils import bytes_to_b64str, crc32c, tree_walk
-
 from ._bit_string import BitString
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from ._slice import Slice
 
 

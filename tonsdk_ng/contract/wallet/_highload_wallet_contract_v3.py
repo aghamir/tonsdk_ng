@@ -1,4 +1,6 @@
-from ...boc import Cell
+from typing import Any, List
+
+from ...types import Cell
 from ...crypto import private_key_to_public_key
 from ...utils import sign_message
 from .. import Contract
@@ -27,7 +29,7 @@ class HighloadWalletV3Contract(WalletContract):
         kwargs["wc"] = 0
         check_timeout(kwargs.get("timeout"))
         super().__init__(**kwargs)
-        if not self.options["wallet_id"]:
+        if "wallet_id" not in kwargs:
             self.options["wallet_id"] = 0x10AD
 
     def create_data_cell(self):
@@ -47,13 +49,13 @@ class HighloadWalletV3Contract(WalletContract):
         query_id: HighloadQueryId,
         created_at: int,
         send_mode: int,
-        message_to_send,
+        messages_to_send,
     ):
         check_timeout(self.options["timeout"])
 
         cell = Cell()
         cell.bits.write_uint(self.options["wallet_id"], 32)
-        cell.refs.append(message_to_send)
+        cell.refs.extend(messages_to_send)
         cell.bits.write_uint(send_mode, 8)
         cell.bits.write_uint(query_id.shift, 13)
         cell.bits.write_uint(query_id.bit_number, 10)
@@ -61,26 +63,63 @@ class HighloadWalletV3Contract(WalletContract):
         cell.bits.write_uint(self.options["timeout"], 22)
         return cell
 
-    def create_transfer_message(
-        self,
-        secret_key: bytes,
-        address: str,
-        amount: int,
-        query_id: HighloadQueryId,
-        create_at: int,
-        payload: str = "",
-        send_mode: int = 3,
-        need_deploy: bool = False,
+    def create_transfer_messages(
+            self,
+            seqno: int,
+            messages: list[dict[str, Any()]],
+            create_at: int,
+            send_mode: int = 3,
+            need_deploy: bool = False,
     ):
         if create_at is None or create_at < 0:
             raise ValueError("create_at must be number >= 0")
-        message_to_send = self.create_out_msg(address, amount, payload)
+        query_id = HighloadQueryId.from_seqno(seqno)
+        messages_to_send = [
+            # TODO: this is not correct
+            # all messages must be write as a single payload
+            # like this:
+            # signing_message = self.create_signing_message(query_id)
+            # recipients = begin_dict(16)
+            # for i, recipient in enumerate(recipients_list):
+            #     payload_cell = Cell()
+            #     if recipient.get("payload"):
+            #         if isinstance(recipient["payload"], str):
+            #             if len(recipient["payload"]) > 0:
+            #                 payload_cell.bits.write_uint(0, 32)
+            #                 payload_cell.bits.write_string(recipient["payload"])
+            #         elif hasattr(recipient["payload"], "refs"):
+            #             payload_cell = recipient["payload"]
+            #         else:
+            #             payload_cell.bits.write_bytes(recipient["payload"])
+            #
+            #     order_header = Contract.create_internal_message_header(
+            #         Address.from_any(recipient["address"]),
+            #         Decimal(recipient["amount"]),
+            #     )
+            #     order = Contract.create_common_msg_info(
+            #         order_header, recipient.get("state_init"), payload_cell
+            #     )
+            #     recipients.store_cell(
+            #         i,
+            #         begin_cell()
+            #         .store_uint8(recipient.get("send_mode", 0))
+            #         .store_ref(order)
+            #         .end_cell(),
+            #     )
+            #
+            # signing_message.store_maybe_ref(recipients.end_cell())
+            self.create_out_msg(
+                message["to_address"], message["amount"],
+                message["payload"], message["state_init"],
+            )
+            for message in messages
+        ]
         signing_message = self.create_signing_message(
-            query_id, create_at, send_mode, message_to_send
+            query_id, create_at, send_mode, messages_to_send
         )
 
         return self.create_external_message(
-            signing_message, secret_key, need_deploy
+            signing_message, self.options["private_key"], need_deploy
         )
 
     def create_external_message(
@@ -89,6 +128,7 @@ class HighloadWalletV3Contract(WalletContract):
         secret_key: bytes,
         need_deploy: bool,
     ):
+        # TODO: Maybe this function needs to be changed due to multiple output in payload
         signature = sign_message(
             signing_message.bytes_hash(), secret_key
         ).signature

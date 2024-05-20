@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from math import ceil, log2
-from typing import Literal
+from typing import Literal, Optional
 
 from typing_extensions import NamedTuple
 
@@ -15,9 +15,9 @@ SourceInt = dict[int, Cell]
 
 class Node(NamedTuple):
     kind: Literal["fork", "leaf"]
-    value: Cell | None = None
-    left: "Edge" | None = None
-    right: "Edge" | None = None
+    value: Optional[Cell] = None
+    left: Optional["Edge"] = None
+    right: Optional["Edge"] = None
 
 
 class Edge(NamedTuple):

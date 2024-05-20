@@ -17,6 +17,7 @@ class Options(TypedDict):
     address: Address
     public_key: bytes
     private_key: bytes
+    wallet_id: int
 
 
 class ExternalMessage(TypedDict):

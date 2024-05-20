@@ -1,6 +1,6 @@
 import time
 
-from ...boc import Cell
+from ...types import Cell
 from ._wallet_contract import WalletContract
 
 
